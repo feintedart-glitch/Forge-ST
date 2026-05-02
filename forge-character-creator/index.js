@@ -7,6 +7,12 @@
 
 import { extension_settings, getContext, saveSettingsDebounced } from '../../../extensions.js';
 
+// Derive base URL from this module's location so template path is always correct
+const _BASE_URL = (() => {
+    try { return new URL('.', import.meta.url).href; }
+    catch (_) { return `/scripts/extensions/third-party/forge-character-creator/`; }
+})();
+
 // ── Optional ST imports with graceful fallback ──────────────────────────────
 let _saveCharacter = null;
 let _createCharacter = null;
@@ -90,9 +96,20 @@ async function createOverlay() {
     // Load HTML template
     let templateHTML = '';
     try {
-        const res = await fetch(`/scripts/extensions/third-party/${EXT_NAME}/templates/creator.html`);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        templateHTML = await res.text();
+        // Try module-relative path first, then fall back to ST's conventional path
+        const paths = [
+            `${_BASE_URL}templates/creator.html`,
+            `/scripts/extensions/third-party/${EXT_NAME}/templates/creator.html`,
+        ];
+        let lastErr;
+        for (const path of paths) {
+            try {
+                const r = await fetch(path);
+                if (r.ok) { templateHTML = await r.text(); break; }
+                lastErr = new Error(`HTTP ${r.status} for ${path}`);
+            } catch (e) { lastErr = e; }
+        }
+        if (!templateHTML) throw lastErr;
     } catch (e) {
         console.error('[FORGE] Failed to load creator.html template:', e);
         return;
@@ -300,23 +317,6 @@ async function extensionInit() {
 
     console.log(`[FORGE] v${EXT_VERSION} — Character Creator extension loaded.`);
 }
-
-// Expose helpers needed by later commits and by inline HTML handlers
-export {
-    openPanel,
-    closePanel,
-    refreshWorldTargetDropdown,
-    refreshAvatarDisplay,
-    showStatus,
-    getSetting,
-    setSetting,
-    _saveCharacter,
-    _createCharacter,
-    _createWorldInfoEntry,
-    _getTokenCount,
-    _eventSource,
-    _event_types,
-};
 
 // ═══════════════════════════════════════════════════════════════════════════
 // COMMIT 2 — DATA TABLES
@@ -544,30 +544,36 @@ const KW_DATA = {
     ]},
 
     // ── PERSONALITY ─────────────────────────────────────────────────────────
-    archetype: { label:'Archetype', limit:1, random:['The Shadow','The Lover','The Trickster','The Beast','The Sage','The Outlaw'], groups:[
-        { g:'Archetype', i:['The Innocent','The Sage','The Explorer','The Outlaw','The Magician','The Hero','The Lover','The Jester','The Caregiver','The Ruler','The Creator','The Shadow','The Trickster','The Beast','The Oracle','The Martyr','The Deviant'] },
+    // replaces archetype — single main personality type, concise labels
+    personality: { label:'Personality', limit:1, random:['tsundere','yandere','motherly','cold','bratty','obsessive','aloof','playful'], groups:[
+        { g:'Tropes',      i:['tsundere','yandere','kuudere','dandere','deredere','sadodere','himedere','undere'] },
+        { g:'Temperament', i:['cold','aloof','warm','nurturing','motherly','cheerful','melancholic','volatile','serene','fierce','stoic','dramatic'] },
+        { g:'Social',      i:['dominant','submissive','flirtatious','reserved','playful','serious','blunt','charming','devious','naive'] },
+        { g:'Edge',        i:['obsessive','manipulative','deceptive','ruthless','unstable','feral','unhinged','vindictive','sadistic','masochistic'] },
     ]},
 
-    disposition: { label:'Disposition', limit:3, random:['cold and calculating','playfully teasing','hungrily predatory','darkly sardonic'], groups:[
-        { g:'Warm',         i:['warm and open','quietly nurturing','gently protective','earnestly sincere','sweetly affectionate','openly adoring'] },
-        { g:'Controlled',   i:['cold and calculating','serenely detached','clinically precise','quietly observant','measured and patient','professionally distant'] },
-        { g:'Intense',      i:['volatilely passionate','explosively emotional','desperately sincere','overwhelmingly devoted','obsessive','all-consuming'] },
-        { g:'Playful / Dark',i:['playfully teasing','darkly sardonic','wickedly charming','bluntly honest','hungrily predatory','arrogantly commanding','bashfully curious','anxiously eager-to-please','pleasantly vicious'] },
+    disposition: { label:'Disposition', limit:3, random:['cold','guarded','teasing','predatory','aloof'], groups:[
+        { g:'Manner',        i:['cold','warm','guarded','open','aloof','distant','attentive','distracted','measured','erratic'] },
+        { g:'Mood',          i:['melancholic','content','restless','tense','volatile','serene','wary','hungry','amused','bored'] },
+        { g:'Toward player', i:['possessive','protective','hostile','curious','indifferent','fond','resentful','fascinated','fixated','dismissive'] },
     ]},
 
-    traits: { label:'Personality Traits', limit:7, random:['fiercely loyal','compulsively honest','wildly impulsive','darkly humorous','protectively possessive'], groups:[
-        { g:'Positive',  i:['fiercely loyal','deeply empathetic','achingly sincere','quietly protective','steadfastly reliable','genuinely kind'] },
-        { g:'Complex',   i:['compulsively honest','chronically flirtatious','disturbingly patient','masterfully deceptive','stubbornly principled','secretly soft'] },
-        { g:'Volatile',  i:['wildly impulsive','explosively emotional','hauntingly sorrowful','darkly humorous','protectively possessive','disturbingly intense','self-destructive'] },
-        { g:'Detached',  i:['quietly observant','clinically detached','unshakeably calm','charmingly self-deprecating','aggressively self-reliant','impossible to read'] },
+    traits: { label:'Traits & Quirks', limit:10, random:['bratty','naive','clingy','secretly soft','teasing','smug'], groups:[
+        { g:'Demeanor',  i:['bratty','motherly','naive','clingy','possessive','jealous','protective','vindictive','prideful','meek','petulant','smug','needy','cold'] },
+        { g:'Behavior',  i:['secretly soft','easily flustered','compulsive liar','brutally honest','people-pleaser','self-destructive','emotionally distant','emotionally intense','fiercely loyal','deeply empathetic'] },
+        { g:'Sexuality', i:['sexually deviant','touch-starved','voyeuristic','exhibitionistic','kink-curious','shame-free','easily tempted','hard to tempt'] },
+        { g:'Quirks',    i:['obsessive','controlling','reckless','calculating','impulsive','nihilistic','self-sabotaging','masochistic','sadistic'] },
+        { g:'Social',    i:['charming','caustic','earnest','sarcastic','teasing','stoic','dramatic','awkward','gracious','cutting'] },
+        { g:'Complex',   i:['secretly kind','openly cruel','quietly resentful','aggressively self-reliant','disturbingly patient','chronically flirtatious'] },
     ]},
 
     skills: { label:'Skills', limit:7, random:['combat — blades','seduction','deception','tracking','stealth'], groups:[
-        { g:'Combat',    i:['combat — unarmed','combat — blades','combat — polearms','combat — improvised','archery','dual-wielding','siege weapons'] },
-        { g:'Magic',     i:['magic — elemental','magic — arcane','magic — blood','magic — illusion','divine channelling','necromancy','shapeshifting','bardic magic','binding'] },
-        { g:'Social',    i:['seduction','persuasion','intimidation','deception','manipulation','performance','disguise','negotiation'] },
-        { g:'Physical',  i:['stealth','tracking','acrobatics','climbing','swimming','riding — horse','riding — beast','parkour'] },
-        { g:'Knowledge', i:['healing','alchemy','linguistics','navigation','forgery','lockpicking','poisons','cartography'] },
+        { g:'Combat',         i:['combat — unarmed','combat — blades','combat — polearms','combat — improvised','archery','dual-wielding','siege weapons'] },
+        { g:'Magic',          i:['magic — elemental','magic — arcane','magic — blood','magic — illusion','divine channelling','necromancy','shapeshifting','bardic magic','binding'] },
+        { g:'Social',         i:['seduction','persuasion','intimidation','deception','manipulation','performance','disguise','negotiation'] },
+        { g:'Physical',       i:['stealth','tracking','acrobatics','climbing','swimming','riding — horse','riding — beast','parkour'] },
+        { g:'Knowledge',      i:['healing','alchemy','linguistics','navigation','forgery','lockpicking','poisons','cartography'] },
+        { g:'NSFW / Intimate',i:['oral mastery','deep throat','edging','orgasm denial','overstimulation','rope bondage','impact play','sensory play','erotic massage','dirty talk expert','seduction mastery','breath play','prostate stimulation','nipple play','multiple orgasm induction','squirt induction','scene negotiation','aftercare','strip tease','vocal performance'] },
     ]},
 
     // ── ANATOMY ─────────────────────────────────────────────────────────────
@@ -673,7 +679,8 @@ const KW_DATA = {
     ]},
 
     sexrole: { label:'Role Preference', limit:3, random:['dominant top','versatile switch'], groups:[
-        { g:'Role', i:['dominant top','dominant — service top','submissive bottom','submissive — pillow princess','versatile switch','tends dominant','tends submissive','service-oriented','prey — hunted','predatory — hunter','caretaker','brat — resistant','brat — secretly eager','worshipper','exhibitionist','voyeur'] },
+        { g:'Role',      i:['dominant top','dominant — service top','submissive bottom','submissive — pillow princess','versatile switch','tends dominant','tends submissive','service-oriented','prey — hunted','predatory — hunter','caretaker','brat — resistant','brat — secretly eager','worshipper','exhibitionist','voyeur'] },
+        { g:'+10 added', i:['soft dom','hard dom','power bottom','stone top','pillow queen','reluctant dominant','willing prey','cnc top','cnc bottom','praise addict'] },
     ]},
 
     verbal: { label:'Verbal Style', limit:3, random:['vocal and uninhibited','soft moans'], groups:[
@@ -707,9 +714,9 @@ const KW_DATA = {
         { g:'Modifier', i:['hard limit — non-negotiable','soft limit — can discuss','limit for now — may change'] },
     ]},
 
-    triggers: { label:'Arousal Triggers', limit:5, random:['sustained eye contact','commanding voice','being held firmly'], groups:[
-        { g:'Sensory',     i:['sustained eye contact','commanding voice','specific scent','being held firmly','warm breath near neck','low quiet voice','deliberate fingertips on skin','cold touch'] },
-        { g:'Situational', i:['feeling of danger','being observed','feeling of powerlessness','being chosen','being the only one','unexpected vulnerability in other','shift in power'] },
+    triggers: { label:'Arousal Triggers', limit:5, random:['sustained eye contact','voice — low and close','being watched','rough hands'], groups:[
+        { g:'Sensory',     i:['sustained eye contact','being watched intently','voice — low and close','voice — commanding','breath on skin','rough hands','cold hands','proximity heat','being undressed slowly','fabric on skin','sudden stillness','deliberate slowness','weight on them','fingers in hair','nails on skin'] },
+        { g:'Situational', i:['shift in power','being chosen','being needed','feeling exposed','someone losing composure','being studied','being cornered','unexpected tenderness','vulnerability shown','danger nearby','being the only one','long silence broken','being caught wanting','being undone slowly'] },
         { g:'Verbal',      i:['being spoken to gently','being spoken to harshly','praise','commands','specific words','own name said a certain way'] },
     ]},
 
@@ -789,3 +796,1085 @@ The Dungeon: At the island's center, beneath the oldest part of the city, is a d
 Atmosphere: The city smells of salt, foreign spices, and old stone. Suspicious eyes, careful smiles. Everyone here is either neutral by policy or by necessity.`,
     },
 ];
+
+// ═══════════════════════════════════════════════════════════════════════════
+// COMMIT 3 — ENGINE: chip system, renderers, output builders, ST API, init
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ── Runtime state ─────────────────────────────────────────────────────────
+let _sceneMode     = 'erotic';
+let _cardFormat    = 'prose';
+let _explicitAnat  = false;
+let _isFav         = false;
+let _relationships = [];
+let _loreEntries   = [];
+let _dialoguePairs = [];
+const KW_STATE     = {};
+
+// ── Generic helpers ───────────────────────────────────────────────────────
+function pick(arr)      { return arr[Math.floor(Math.random() * arr.length)]; }
+function g(id)          { const el = document.getElementById(id); return el ? el.value.trim() : ''; }
+function cap(s)         { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
+function join(arr, sep) { return arr.join(sep || ', '); }
+function escAttr(v)     { return String(v || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function positivePhrase(text) {
+    if (!text) return '';
+    let out = String(text).trim();
+    const key = out.toLowerCase();
+    if (POSITIVE_REPHRASES.has(key)) return POSITIVE_REPHRASES.get(key);
+    out = out
+        .replace(/\bcannot be hidden\b/gi, 'always visible')
+        .replace(/\bcan't be hidden\b/gi,  'always visible')
+        .replace(/\bno visible pupil\b/gi,  'pupilless')
+        .replace(/\bno marks\b/gi,          'pristine — unmarked')
+        .replace(/\bno cycle\b/gi,          'acyclical')
+        .replace(/\bnothing permanent\b/gi, 'temporary only');
+    return out;
+}
+function cleanList(arr)  { return arr.map(positivePhrase).filter(Boolean); }
+function lowerJoin(arr)  { return cleanList(arr).map(v => String(v).toLowerCase()).join(', '); }
+function nv(label, val)  { return val ? label + ': ' + val : null; }
+function countTokens(t)  { return _getTokenCount(t); }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CHIP ENGINE
+// ═══════════════════════════════════════════════════════════════════════════
+function kwInit(key, containerId) {
+    const cfg  = KW_DATA[key];
+    if (!cfg) return;
+    KW_STATE[key] = [];
+    const wrap = document.getElementById(containerId);
+    if (!wrap) return;
+
+    const block    = document.createElement('div');
+    block.className = 'forge-kw-block';
+
+    const labelRow = document.createElement('div');
+    labelRow.className = 'forge-kw-label';
+    labelRow.innerHTML = `<span>${cfg.label}</span><button class="forge-dice-btn" onclick="FORGE.kwRandom('${key}')">⚄</button>`;
+    block.appendChild(labelRow);
+
+    const row   = document.createElement('div');
+    row.className = 'forge-kw-row';
+    row.id      = 'fkwr-' + key;
+    block.appendChild(row);
+
+    const addWrap   = document.createElement('div');
+    addWrap.className = 'forge-kw-add-wrap';
+
+    const addBtn    = document.createElement('span');
+    addBtn.className = 'forge-kw-add';
+    addBtn.innerHTML = '<span class="forge-kw-plus">+</span>add';
+    addBtn.onclick   = (e) => { e.stopPropagation(); kwToggleDD(key); };
+    addWrap.appendChild(addBtn);
+
+    const dd    = document.createElement('div');
+    dd.className = 'forge-kw-dropdown';
+    dd.id       = 'fkwdd-' + key;
+
+    const srchWrap   = document.createElement('div');
+    srchWrap.className = 'forge-kw-dropdown-search';
+    const srchInp    = document.createElement('input');
+    srchInp.type        = 'text';
+    srchInp.placeholder = 'search or type…';
+    srchInp.id          = 'fkwsi-' + key;
+    srchInp.oninput     = () => kwFilter(key);
+    srchWrap.appendChild(srchInp);
+    dd.appendChild(srchWrap);
+
+    const itemsWrap   = document.createElement('div');
+    itemsWrap.className = 'forge-kw-items-wrap';
+    itemsWrap.id        = 'fkwii-' + key;
+    cfg.groups.forEach(grp => {
+        const gl   = document.createElement('div');
+        gl.className = 'forge-kw-group-label';
+        gl.textContent = grp.g;
+        itemsWrap.appendChild(gl);
+        grp.i.forEach(item => {
+            const di   = document.createElement('div');
+            di.className = 'forge-kw-item';
+            di.dataset.v = item;
+            di.textContent = item;
+            di.onclick   = () => kwToggleItem(key, item);
+            itemsWrap.appendChild(di);
+        });
+    });
+    dd.appendChild(itemsWrap);
+
+    const wi    = document.createElement('div');
+    wi.className = 'forge-kw-writein';
+    const wiInp = document.createElement('input');
+    wiInp.type        = 'text';
+    wiInp.placeholder = 'custom keyword…';
+    wiInp.id          = 'fkwwi-' + key;
+    wiInp.onkeydown   = (e) => { if (e.key === 'Enter') kwAddCustom(key); };
+    const wiBtn = document.createElement('button');
+    wiBtn.textContent = 'Add';
+    wiBtn.onclick     = () => kwAddCustom(key);
+    wi.appendChild(wiInp); wi.appendChild(wiBtn);
+    dd.appendChild(wi);
+
+    addWrap.appendChild(dd);
+    row.appendChild(addWrap);
+    wrap.appendChild(block);
+}
+
+function kwToggleDD(key) {
+    document.querySelectorAll('.forge-kw-dropdown.open').forEach(d => {
+        if (d.id !== 'fkwdd-' + key) d.classList.remove('open');
+    });
+    const dd = document.getElementById('fkwdd-' + key);
+    if (!dd) return;
+    dd.classList.toggle('open');
+    if (dd.classList.contains('open')) {
+        const si = document.getElementById('fkwsi-' + key);
+        if (si) { si.value = ''; kwFilter(key); setTimeout(() => si.focus(), 40); }
+    }
+}
+
+function kwFilter(key) {
+    const q   = (document.getElementById('fkwsi-' + key)?.value || '').toLowerCase();
+    const iw  = document.getElementById('fkwii-' + key);
+    if (!iw) return;
+    const cur = KW_STATE[key] || [];
+    iw.querySelectorAll('.forge-kw-item').forEach(el => {
+        const v = el.dataset.v || '';
+        el.style.display = (!q || v.toLowerCase().includes(q)) ? '' : 'none';
+        el.classList.toggle('selected', cur.includes(v));
+    });
+    iw.querySelectorAll('.forge-kw-group-label').forEach(gl => {
+        let sib = gl.nextElementSibling, any = false;
+        while (sib && !sib.classList.contains('forge-kw-group-label')) {
+            if (sib.style.display !== 'none') any = true;
+            sib = sib.nextElementSibling;
+        }
+        gl.style.display = any ? '' : 'none';
+    });
+}
+
+function kwToggleItem(key, val) {
+    const cur = KW_STATE[key] || [];
+    if (cur.includes(val)) { kwRemove(key, val); return; }
+    const cfg = KW_DATA[key];
+    if (cfg.limit && cur.length >= cfg.limit) cur.shift();
+    cur.push(val);
+    KW_STATE[key] = cur;
+    kwRender(key); kwFilter(key); regen();
+}
+
+function kwRemove(key, val) {
+    const cur = KW_STATE[key] || [];
+    const i   = cur.indexOf(val);
+    if (i !== -1) cur.splice(i, 1);
+    kwRender(key); kwFilter(key); regen();
+}
+
+function kwAddCustom(key) {
+    const inp = document.getElementById('fkwwi-' + key);
+    if (!inp) return;
+    const val = inp.value.trim();
+    if (!val) return;
+    kwToggleItem(key, val);
+    inp.value = '';
+}
+
+function kwRender(key) {
+    const row = document.getElementById('fkwr-' + key);
+    if (!row) return;
+    const addWrap = row.querySelector('.forge-kw-add-wrap');
+    Array.from(row.querySelectorAll('.forge-kw')).forEach(c => c.remove());
+    (KW_STATE[key] || []).forEach(val => {
+        const chip = document.createElement('span');
+        chip.className = 'forge-kw';
+        chip.innerHTML = `<span class="forge-kw-ob">[</span><span class="forge-kw-text">${escAttr(val)}</span><span class="forge-kw-cb">]</span><span class="forge-kw-x">×</span>`;
+        chip.querySelector('.forge-kw-x').onclick = () => kwRemove(key, val);
+        row.insertBefore(chip, addWrap);
+    });
+}
+
+function kwRandom(key) {
+    const cfg = KW_DATA[key];
+    if (!cfg) return;
+    KW_STATE[key] = [];
+    const pool  = cfg.random?.length ? cfg.random : cfg.groups.flatMap(g => g.i);
+    const count = Math.min(cfg.limit || 3, Math.max(1, Math.floor(Math.random() * 3) + 1));
+    [...pool].sort(() => Math.random() - 0.5).slice(0, count).forEach(v => kwToggleItem(key, v));
+}
+
+function kwSet(key, vals) { KW_STATE[key] = []; vals.forEach(v => kwToggleItem(key, v)); }
+function kwGet(key)       { return KW_STATE[key] || []; }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SECTION / SLIDER / TOGGLE HELPERS
+// ═══════════════════════════════════════════════════════════════════════════
+function toggleSection(id) { document.getElementById(id)?.classList.toggle('collapsed'); }
+function collapseAll()     { document.querySelectorAll('#forge-panel .forge-section').forEach(s => s.classList.add('collapsed')); }
+function expandAll()       { document.querySelectorAll('#forge-panel .forge-section').forEach(s => s.classList.remove('collapsed')); }
+
+function slv(id) {
+    const el = document.getElementById(id + '-v');
+    const sl = document.getElementById(id);
+    if (el && sl) el.textContent = sl.value;
+}
+function toggleItem(el) { el.classList.toggle('active'); regen(); }
+function getActiveToggles() {
+    return Array.from(document.querySelectorAll('#forge-content-toggles .forge-toggle-item.active'))
+                .map(t => t.querySelector('.forge-toggle-label')?.textContent?.trim())
+                .filter(Boolean);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SCENE PRESETS + MODES
+// ═══════════════════════════════════════════════════════════════════════════
+function renderScenePresets() {
+    const c = document.getElementById('forge-scene-presets');
+    if (!c) return;
+    SCENE_PRESETS_DATA.forEach(p => {
+        const card = document.createElement('div');
+        card.className = 'forge-preset-card';
+        card.innerHTML = `<div class="forge-preset-tag">${p.genre}</div><div class="forge-preset-name">${p.name}</div>`;
+        card.onclick   = () => {
+            document.querySelectorAll('#forge-scene-presets .forge-preset-card').forEach(c => c.classList.remove('active'));
+            card.classList.add('active');
+            kwSet('location',   [p.location]);
+            kwSet('atmosphere', [p.atmosphere]);
+            kwSet('situation',  [p.situation]);
+            kwSet('mood',       [p.mood]);
+            const hookEl = document.getElementById('forge-scene-hook');
+            if (hookEl) hookEl.value = p.hook;
+            regen();
+        };
+        c.appendChild(card);
+    });
+}
+
+function renderSceneModes() {
+    const c = document.getElementById('forge-scene-mode-grid');
+    if (!c) return;
+    SCENE_MODES.forEach(m => {
+        const card = document.createElement('div');
+        card.className   = 'forge-preset-card' + (m.mode === _sceneMode ? ' active' : '');
+        card.dataset.mode = m.mode;
+        card.innerHTML   = `<div class="forge-preset-tag">${m.tag}</div><div class="forge-preset-name">${m.name}</div>`;
+        card.onclick     = () => {
+            document.querySelectorAll('.forge-preset-card[data-mode]').forEach(c => c.classList.remove('active'));
+            card.classList.add('active');
+            _sceneMode = m.mode; regen();
+        };
+        c.appendChild(card);
+    });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// RELATIONSHIPS
+// ═══════════════════════════════════════════════════════════════════════════
+function renderRelationships() {
+    const c = document.getElementById('forge-relationships-list');
+    if (!c) return;
+    c.innerHTML = '';
+    _relationships.forEach((rel, i) => {
+        const row = document.createElement('div');
+        row.className = 'forge-rel-row';
+        row.innerHTML = `
+            <span class="forge-rel-bracket">[</span>
+            <input type="text" class="forge-rel-role-input" placeholder="sister, rival…" value="${escAttr(rel.role)}"
+                   oninput="window._FR[${i}].role=this.value;FORGE.regen()" list="forge-rel-role-list">
+            <span class="forge-rel-bracket">]</span>
+            <span class="forge-rel-of">of</span>
+            <input type="text" class="forge-rel-name-input" placeholder="character name…" value="${escAttr(rel.name)}"
+                   oninput="window._FR[${i}].name=this.value;FORGE.regen()">
+            <button class="forge-rel-remove" onclick="FORGE.removeRelationship(${rel.id})" title="Remove">×</button>`;
+        c.appendChild(row);
+    });
+    if (!document.getElementById('forge-rel-role-list')) {
+        const dl = document.createElement('datalist');
+        dl.id = 'forge-rel-role-list';
+        REL_ROLES.forEach(r => { const o = document.createElement('option'); o.value = r; dl.appendChild(o); });
+        document.body.appendChild(dl);
+    }
+    window._FR = _relationships;
+    regen();
+}
+
+function addRelationship(role, name) {
+    _relationships.push({ id: Date.now(), role: role || '', name: name || '' });
+    renderRelationships();
+}
+function removeRelationship(id) {
+    _relationships = _relationships.filter(r => r.id !== id);
+    renderRelationships();
+}
+function randomizeRelationships() {
+    _relationships = [];
+    const count = Math.floor(Math.random() * 3) + 1;
+    for (let i = 0; i < count; i++) addRelationship(pick(REL_ROLES), pick(REL_NAMES));
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// WORLD INFO / LOREBOOK
+// ═══════════════════════════════════════════════════════════════════════════
+function addLore() {
+    _loreEntries.push({ id: Date.now(), keyword: '', content: '' });
+    renderLore();
+}
+
+function renderLore() {
+    const c = document.getElementById('forge-lorebook-entries');
+    if (!c) return;
+    c.innerHTML = '';
+    _loreEntries.forEach((e, i) => {
+        const d = document.createElement('div');
+        d.className = 'forge-lore-entry';
+        d.innerHTML = `
+            <div class="forge-field-row" style="margin-bottom:6px;">
+                <div class="forge-field">
+                    <div class="forge-field-label">Keyword / Keys</div>
+                    <input type="text" value="${escAttr(e.keyword)}" placeholder="Trigger word…"
+                           oninput="window._FL[${i}].keyword=this.value;FORGE.regen()">
+                </div>
+                <div style="display:flex;align-items:flex-end;padding-bottom:1px;">
+                    <button class="forge-btn-danger" onclick="window._FL.splice(${i},1);FORGE.renderLore()">✕</button>
+                </div>
+            </div>
+            <div class="forge-field">
+                <div class="forge-field-label">Content</div>
+                <textarea placeholder="Entry content…" style="min-height:80px;"
+                          oninput="window._FL[${i}].content=this.value;FORGE.regen()">${escAttr(e.content)}</textarea>
+            </div>`;
+        c.appendChild(d);
+    });
+    window._FL = _loreEntries;
+    regen();
+}
+
+function sendCharToWorldInfo() {
+    const name    = g('forge-char-name');
+    const keyword = name || 'character';
+    const content = buildCharAttributes();
+    if (!content) { alert('Fill in at least a name or species first.'); return; }
+    _loreEntries.push({ id: Date.now(), keyword, content });
+    renderLore();
+    document.getElementById('forge-lorebook-entries')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    const btn = document.querySelector('.forge-send-lore-btn');
+    if (btn) {
+        const orig = btn.innerHTML;
+        btn.innerHTML = '✓ Added to entries';
+        btn.style.borderColor = 'var(--forge-gold)';
+        setTimeout(() => { btn.innerHTML = orig; btn.style.borderColor = ''; }, 2000);
+    }
+}
+
+function renderWorldLorePresets() {
+    const c = document.getElementById('forge-world-lore-presets');
+    if (!c) return;
+    c.innerHTML = '';
+    WORLD_LORE_PRESETS.forEach((wp, wi) => {
+        const card = document.createElement('div');
+        card.className = 'forge-world-preset-card';
+        card.innerHTML = `
+            <div>
+                <div class="forge-world-preset-title">${wp.name}</div>
+                <div class="forge-world-preset-sub">${wp.subtitle} · ${wp.keys.length} keys</div>
+            </div>
+            <div class="forge-world-preset-badge">Load</div>`;
+        card.onclick = () => {
+            document.querySelectorAll('.forge-world-preset-card').forEach(c => c.classList.remove('active'));
+            card.classList.add('active');
+            if (!_loreEntries.find(e => e.keyword === wp.keys.join(', '))) {
+                _loreEntries.push({ id: Date.now(), keyword: wp.keys.join(', '), content: wp.lore });
+                renderLore();
+            }
+            _toggleWorldHooks(wp, card, wi);
+        };
+        c.appendChild(card);
+
+        const hookWrap = document.createElement('div');
+        hookWrap.id = `forge-world-hooks-${wi}`;
+        hookWrap.style.cssText = 'display:none;margin-bottom:8px;';
+        wp.scenes.forEach(sc => {
+            const hb = document.createElement('div');
+            hb.style.cssText = 'padding:7px 12px 7px 16px;border-left:2px solid var(--forge-gold-dim);margin-bottom:5px;background:var(--forge-bg3);border-radius:0 3px 3px 0;cursor:pointer;';
+            hb.innerHTML = `<div style="font-family:var(--forge-font-mono);font-size:9px;color:var(--forge-gold-dim);letter-spacing:.12em;text-transform:uppercase;margin-bottom:3px;">${sc.tag}</div>
+                            <div style="font-family:var(--forge-font-body);font-size:14px;color:var(--forge-text2);">${sc.hook}</div>`;
+            hb.onclick = (e) => {
+                e.stopPropagation();
+                const hookEl = document.getElementById('forge-scene-hook');
+                if (hookEl) hookEl.value = sc.hook;
+                kwSet('location',   [wp.keys[0]]);
+                kwSet('atmosphere', ['sea wind, foreign tongues, polite tension between enemies']);
+                regen();
+            };
+            hookWrap.appendChild(hb);
+        });
+        c.appendChild(hookWrap);
+    });
+}
+
+function _toggleWorldHooks(wp, card, wi) {
+    const hw   = document.getElementById(`forge-world-hooks-${wi}`);
+    if (!hw) return;
+    const open = hw.style.display !== 'none';
+    hw.style.display = open ? 'none' : 'block';
+    const badge = card.querySelector('.forge-world-preset-badge');
+    if (badge) badge.textContent = open ? 'Load' : 'Hide';
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// DIALOGUE BUILDER
+// ═══════════════════════════════════════════════════════════════════════════
+function renderDialogue() {
+    const c = document.getElementById('forge-dialogue-list');
+    if (!c) return;
+    c.innerHTML = '';
+    _dialoguePairs.forEach((pair, i) => {
+        const d = document.createElement('div');
+        d.className = 'forge-dialogue-pair';
+        d.innerHTML = `
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                <span style="font-family:var(--forge-font-mono);font-size:9px;color:var(--forge-gold-dim);letter-spacing:.1em;">EXCHANGE ${i + 1}</span>
+                <button class="forge-rel-remove" onclick="window._FD.splice(${i},1);FORGE.renderDialogue()" title="Remove">×</button>
+            </div>
+            <div class="forge-dialogue-speaker">{{user}}:</div>
+            <textarea style="min-height:44px;margin-bottom:6px;" placeholder="User message…"
+                      oninput="window._FD[${i}].user=this.value;FORGE.regen()">${escAttr(pair.user)}</textarea>
+            <div class="forge-dialogue-speaker">{{char}}:</div>
+            <textarea style="min-height:54px;" placeholder="${g('forge-char-name') || 'Character'} response…"
+                      oninput="window._FD[${i}].char=this.value;FORGE.regen()">${escAttr(pair.char)}</textarea>`;
+        c.appendChild(d);
+    });
+    window._FD = _dialoguePairs;
+    regen();
+}
+
+function addDialoguePair() {
+    _dialoguePairs.push({ id: Date.now(), user: '', char: '' });
+    renderDialogue();
+}
+function randomizeDialogue() {
+    _dialoguePairs = [];
+    const count = Math.floor(Math.random() * 3) + 1;
+    for (let i = 0; i < count; i++) {
+        const ex = pick(DIALOGUE_EXAMPLES);
+        _dialoguePairs.push({ id: Date.now() + i, user: ex.user, char: ex.char });
+    }
+    renderDialogue();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// OUTPUT BUILDERS
+// ═══════════════════════════════════════════════════════════════════════════
+function getSliderAxes() {
+    const ds = +(document.getElementById('forge-sl-ds')?.value ?? 5);
+    const sb = +(document.getElementById('forge-sl-sb')?.value ?? 5);
+    const cw = +(document.getElementById('forge-sl-cw')?.value ?? 5);
+    const pc = +(document.getElementById('forge-sl-pc')?.value ?? 3);
+    const out = [];
+    if (ds <= 3) out.push('dominant');  else if (ds >= 7) out.push('submissive');
+    if (sb <= 3) out.push('reserved');  else if (sb >= 7) out.push('bold');
+    if (cw <= 3) out.push('cold');      else if (cw >= 7) out.push('warm');
+    if (pc >= 7) out.push('deeply corrupt'); else if (pc <= 2) out.push('essentially innocent');
+    return out;
+}
+
+function buildCharAttributes() {
+    const name    = g('forge-char-name');
+    const species = kwGet('species');
+    const role    = kwGet('role');
+    if (!name && !species.length && !role.length) return null;
+    const app  = [...kwGet('build'),...kwGet('height'),...kwGet('skin'),...kwGet('hair'),...kwGet('eyes'),...kwGet('face'),...kwGet('marks'),...kwGet('scent'),...kwGet('nonhuman')];
+    const pers = [...kwGet('personality'),...kwGet('disposition'),...kwGet('traits')];
+    const anat = _explicitAnat ? [...kwGet('chest'),...kwGet('nipples'),...kwGet('genitalia-a'),...kwGet('genitalia-b'),...kwGet('rear'),...kwGet('pubic'),...kwGet('anal'),...kwGet('fluids'),...kwGet('fertility'),...kwGet('erogenous'),...kwGet('bodymod')] : [];
+    const lines = [
+        nv('Name',      name),
+        nv('Species',   lowerJoin(species)),
+        nv('Gender',    lowerJoin(kwGet('pronouns'))),
+        nv('Age',       g('forge-char-age')),
+        nv('Role',      lowerJoin(role)),
+        nv('Appearance',lowerJoin(app)),
+        nv('Personality',lowerJoin(pers)),
+        nv('Background',lowerJoin(kwGet('background'))),
+        nv('Skills',    lowerJoin(kwGet('skills'))),
+        anat.length ? nv('Anatomy', lowerJoin(anat)) : null,
+        nv('Sexuality', lowerJoin([...kwGet('sexrole'),...kwGet('experience')])),
+    ].filter(Boolean);
+    return lines.join('\n') || null;
+}
+
+// ── W++ ───────────────────────────────────────────────────────────────────
+function buildWpp() {
+    const name = g('forge-char-name') || 'Character';
+    const qq   = arr => cleanList(arr).map(v => `"${v}"`).join(' ');
+    const blocks = [];
+
+    const pers = [...kwGet('personality'),...kwGet('disposition'),...kwGet('traits'),...getSliderAxes()];
+    if (pers.length) blocks.push(`Personality(${qq(pers)})`);
+
+    const app = [...kwGet('build'),...kwGet('height'),...kwGet('skin'),...kwGet('hair'),...kwGet('eyes'),...kwGet('face')];
+    if (app.length) blocks.push(`Appearance(${qq(app)})`);
+
+    const marks = kwGet('marks');
+    if (marks.length) blocks.push(`Marks(${qq(marks)})`);
+
+    const scent = kwGet('scent');
+    if (scent.length) blocks.push(`Scent(${qq(scent)})`);
+
+    const nh = kwGet('nonhuman');
+    if (nh.length) blocks.push(`NonHuman(${qq(nh)})`);
+
+    const bg = kwGet('background');
+    if (bg.length) blocks.push(`Background(${qq(bg)})`);
+
+    const sk = kwGet('skills');
+    if (sk.length) blocks.push(`Skills(${qq(sk)})`);
+
+    const rels = _relationships.filter(r => r.role || r.name);
+    if (rels.length) blocks.push(`Relationships(${rels.map(r => `"${positivePhrase(r.role || 'related')} of ${positivePhrase(r.name || 'unknown')}"`).join(' ')})`);
+
+    const voice = g('forge-voice-note');
+    if (voice) blocks.push(`Voice("${voice}")`);
+
+    if (_explicitAnat) {
+        const body = [...kwGet('chest'),...kwGet('nipples'),...kwGet('rear'),...kwGet('pubic'),...kwGet('erogenous'),...kwGet('bodymod')];
+        if (body.length) blocks.push(`Body(${qq(body)})`);
+        const sex = [...kwGet('genitalia-a'),...kwGet('genitalia-b'),...kwGet('anal'),...kwGet('fluids'),...kwGet('fertility')];
+        if (sex.length)  blocks.push(`Sexual(${qq(sex)})`);
+        const kinks = [...kwGet('kinks'),...kwGet('likes')];
+        if (kinks.length) blocks.push(`Kinks(${qq(kinks)})`);
+        const limits = kwGet('limits').map(positivePhrase);
+        if (limits.length) blocks.push(`Limits(${limits.map(v => `"${v}"`).join(' ')})`);
+        const sr = kwGet('sexrole');
+        if (sr.length) blocks.push(`SexRole(${qq(sr)})`);
+        const vb = kwGet('verbal');
+        if (vb.length) blocks.push(`VerbalStyle(${qq(vb)})`);
+    }
+
+    if (!blocks.length) return null;
+    return `[character("${name}") {\n${blocks.join('\n')}\n}]`;
+}
+
+// ── PList ─────────────────────────────────────────────────────────────────
+function buildPList() {
+    const name = g('forge-char-name') || 'Character';
+    const pers  = [...kwGet('personality'),...kwGet('disposition'),...kwGet('traits'),...getSliderAxes()];
+    const app   = [...kwGet('build'),...kwGet('height'),...kwGet('skin'),...kwGet('hair'),...kwGet('eyes'),...kwGet('face'),...kwGet('marks'),...kwGet('nonhuman')];
+    const parts = [];
+    const sp = kwGet('species'); if (sp.length) parts.push(`species: ${lowerJoin(sp)}`);
+    const rl = kwGet('role');    if (rl.length) parts.push(`role: ${lowerJoin(rl)}`);
+    const ag = g('forge-char-age'); if (ag) parts.push(`age: ${ag}`);
+    if (pers.length) parts.push(`personality: ${lowerJoin(pers)}`);
+    if (app.length)  parts.push(`appearance: ${lowerJoin(app)}`);
+    const bg = kwGet('background'); if (bg.length) parts.push(`background: ${lowerJoin(bg)}`);
+    const sk = kwGet('skills');     if (sk.length) parts.push(`skills: ${lowerJoin(sk)}`);
+    const voice = g('forge-voice-note'); if (voice) parts.push(`voice: ${voice}`);
+    const rels = _relationships.filter(r => r.role || r.name);
+    if (rels.length) parts.push(`relationships: ${rels.map(r => `${positivePhrase(r.role || 'related')} of ${positivePhrase(r.name || 'unknown')}`).join(', ')}`);
+    if (_explicitAnat) {
+        const body = [...kwGet('chest'),...kwGet('nipples'),...kwGet('rear'),...kwGet('pubic'),...kwGet('genitalia-a'),...kwGet('genitalia-b')];
+        if (body.length) parts.push(`body: ${lowerJoin(body)}`);
+        const sexd = [...kwGet('sexrole'),...kwGet('experience'),...kwGet('kinks'),...kwGet('likes')];
+        if (sexd.length) parts.push(`sexual: ${lowerJoin(sexd)}`);
+        const lim = kwGet('limits').map(positivePhrase);
+        if (lim.length) parts.push(`limits: ${lim.map(v => v.toLowerCase()).join(', ')}`);
+    }
+    if (!parts.length) return null;
+    return `${name}: [${parts.join('; ')}]`;
+}
+
+// ── Prose ─────────────────────────────────────────────────────────────────
+function buildProse() {
+    const name     = g('forge-char-name');
+    const species  = kwGet('species');
+    const role     = kwGet('role');
+    if (!name && !species.length && !role.length) return null;
+
+    const pronouns = kwGet('pronouns');
+    const pro      = pronouns.length ? cleanList(pronouns)[0] : null;
+    const pronRef  = pro
+        ? (pro.startsWith('she') ? 'She has' : pro.startsWith('he') ? 'He has' : 'They have')
+        : (name ? `${name} has` : 'Has');
+
+    const lines = [];
+
+    // Identity
+    const id = [name,...cleanList(species),...cleanList(role)].filter(Boolean);
+    const ag = g('forge-char-age');
+    if (ag) id.push(ag + ' years old');
+    lines.push(id.join(', ') + '.');
+
+    // Appearance
+    const build  = kwGet('build'); const height = kwGet('height');
+    const skin   = kwGet('skin');  const hair   = kwGet('hair');
+    const eyes   = kwGet('eyes');  const face   = kwGet('face');
+    const phys   = [...cleanList(build),...cleanList(height)].join(', ');
+    const colour = [
+        skin.length  ? join(cleanList(skin))  + ' skin'  : '',
+        hair.length  ? join(cleanList(hair))  + ' hair'  : '',
+        eyes.length  ? join(cleanList(eyes))  + ' eyes'  : '',
+    ].filter(Boolean);
+    if (face.length) colour.push(...cleanList(face));
+    if (phys || colour.length) {
+        lines.push(`${pronRef} a ${phys}${phys && colour.length ? ', with ' : ''}${colour.join(', ')}.`);
+    }
+
+    const marks   = kwGet('marks');   if (marks.length)   lines.push(`Marks: ${join(cleanList(marks))}.`);
+    const scent   = kwGet('scent');   if (scent.length)   lines.push(`Scent: ${join(cleanList(scent))}.`);
+    const nh      = kwGet('nonhuman');if (nh.length)      lines.push(`Non-human features: ${join(cleanList(nh))}.`);
+
+    // Personality
+    const pers = [...kwGet('personality'),...kwGet('disposition'),...kwGet('traits')];
+    const axes = getSliderAxes();
+    if (pers.length || axes.length) lines.push(`Personality: ${join([...cleanList(pers),...axes].filter(Boolean))}.`);
+    const voice = g('forge-voice-note'); if (voice) lines.push(`Voice: ${voice}.`);
+
+    const sk = kwGet('skills'); if (sk.length) lines.push(`Skills: ${join(cleanList(sk))}.`);
+    const bg = kwGet('background'); if (bg.length) lines.push(`Background: ${join(cleanList(bg))}.`);
+
+    const rels = _relationships.filter(r => r.role || r.name);
+    if (rels.length) lines.push('Relationships: ' + rels.map(r => `${positivePhrase(r.role || 'related')} of ${positivePhrase(r.name || 'unknown')}`).join('; ') + '.');
+
+    if (_explicitAnat) {
+        const body = [...kwGet('chest'),...kwGet('nipples'),...kwGet('rear'),...kwGet('pubic'),...kwGet('erogenous'),...kwGet('bodymod')];
+        const sex  = [...kwGet('genitalia-a'),...kwGet('genitalia-b'),...kwGet('anal'),...kwGet('fluids'),...kwGet('fertility')];
+        if (body.length || sex.length) {
+            lines.push(''); lines.push('Anatomy:');
+            if (body.length) lines.push(`Body: ${join(cleanList(body))}.`);
+            if (sex.length)  lines.push(`Genitalia: ${join(cleanList(sex))}.`);
+        }
+        const sd    = [...kwGet('sexrole'),...kwGet('experience'),...kwGet('verbal'),...kwGet('triggers')];
+        const kinks = kwGet('kinks'); const likes = kwGet('likes');
+        const lim   = kwGet('limits').map(positivePhrase);
+        if (sd.length || kinks.length || likes.length) {
+            lines.push(''); lines.push('Sexual disposition:');
+            if (sd.length)    lines.push(`Role/experience: ${join(cleanList(sd))}.`);
+            if (kinks.length) lines.push(`Kinks: ${join(cleanList(kinks))}.`);
+            if (likes.length) lines.push(`Likes: ${join(cleanList(likes))}.`);
+            if (lim.length)   lines.push(`Limits: ${lim.map(v => v.toLowerCase()).join(', ')}.`);
+        }
+    }
+
+    return lines.join('\n').trim() || null;
+}
+
+// ── Dispatchers ───────────────────────────────────────────────────────────
+function buildDescription() {
+    switch (_cardFormat) {
+        case 'wpp':   return buildWpp();
+        case 'plist': return buildPList();
+        default:      return buildProse();
+    }
+}
+
+function buildPersonality() {
+    const pers  = [...kwGet('personality'),...kwGet('disposition'),...kwGet('traits')];
+    const axes  = getSliderAxes();
+    const voice = g('forge-voice-note');
+    const parts = [];
+    if (pers.length || axes.length) parts.push(join([...cleanList(pers),...axes].filter(Boolean)));
+    if (voice) parts.push(voice);
+    return parts.join('\n') || null;
+}
+
+function buildFirstMessage() {
+    const full = g('forge-scene-full');
+    if (full) return full;
+    const loc  = kwGet('location'); const atm  = kwGet('atmosphere');
+    const sit  = kwGet('situation');const mood = kwGet('mood');
+    const hook = g('forge-scene-hook');
+    if (!loc.length && !sit.length && !hook) return null;
+    const parts = [];
+    if (hook) parts.push(hook);
+    const ctx = [];
+    if (loc.length)  ctx.push('Setting: '    + join(loc));
+    if (atm.length)  ctx.push('Atmosphere: ' + join(atm));
+    if (sit.length)  ctx.push('Situation: '  + join(sit));
+    if (mood.length) ctx.push('Mood: '       + join(mood));
+    const npcs = g('forge-scene-npcs'); if (npcs) ctx.push('Present: ' + npcs);
+    const plyr = g('forge-scene-player'); if (plyr) ctx.push('Player: ' + plyr);
+    const nm   = g('forge-char-name');   if (nm)   ctx.push('Character: ' + nm);
+    if (ctx.length) parts.push('\n' + ctx.join('\n'));
+    return parts.join('\n\n') || null;
+}
+
+function buildExampleDialogue() {
+    const valid = _dialoguePairs.filter(p => p.user || p.char);
+    if (!valid.length) return null;
+    return valid.map(p => `<START>\n{{user}}: ${p.user || '…'}\n{{char}}: ${p.char || '…'}`).join('\n\n');
+}
+
+function buildSystemPrompt() {
+    const persona   = g('forge-persona-note');
+    const custom    = g('forge-style-custom');
+    const modeDesc  = SCENE_MODE_DESC[_sceneMode] || '';
+    const genre     = g('forge-style-genre') || { literary:'literary fiction', pulp:'pulp adventure', erotic:'adult romance', horror:'body horror', romance:'romance', adventure:'adventure fantasy' }[_sceneMode] || 'roleplay';
+    const author    = g('forge-style-author');
+    const title     = g('forge-style-title');
+    const rating    = g('forge-style-rating') || '4';
+    const styleParts = [modeDesc,...cleanList(kwGet('pov')),...cleanList(kwGet('tense')).map(v => v.toLowerCase() + ' tense'),...cleanList(kwGet('rhythm')),...cleanList(kwGet('vocab')),...cleanList(kwGet('pacing')),...cleanList(kwGet('descfocus'))].filter(Boolean);
+    const toggles   = getActiveToggles();
+    const blocks    = [];
+    if (persona) blocks.push(persona);
+    if (styleParts.length || toggles.length || genre) {
+        let sb = `[ Style: ${styleParts.join(', ') || 'character driven'}; Genre: ${genre}`;
+        if (toggles.length) sb += `; Tags: ${cleanList(toggles).join(', ')}`;
+        if (author) sb += `; Author: ${author}`;
+        if (title)  sb += `; Title: ${title}`;
+        sb += `; Rating: S:${rating} ]`;
+        blocks.push(sb);
+    }
+    if (custom) blocks.push(`[ Notes: ${positivePhrase(custom)} ]`);
+    return blocks.join('\n\n') || null;
+}
+
+// ── setOutput / regen ─────────────────────────────────────────────────────
+function setOutput(id, tokId, content) {
+    const el   = document.getElementById(id);
+    const tkEl = document.getElementById(tokId);
+    if (!el) return;
+    const btn = el.querySelector('.forge-copy-btn');
+    el.innerHTML = '';
+    if (btn) { el.appendChild(btn); }
+    else {
+        const b = document.createElement('button');
+        b.className = 'forge-copy-btn';
+        b.textContent = 'Copy';
+        b.onclick = function () { FORGE.copyBlock(id, this); };
+        el.appendChild(b);
+    }
+    if (content) {
+        el.appendChild(document.createTextNode(content));
+        if (tkEl) tkEl.textContent = countTokens(content) + ' tk';
+    } else {
+        const s = document.createElement('span');
+        s.className   = 'forge-placeholder';
+        s.textContent = 'Fill in details…';
+        el.appendChild(s);
+        if (tkEl) tkEl.textContent = '0 tk';
+    }
+}
+
+function regen() {
+    setOutput('forge-out-description','forge-tok-description', buildDescription());
+    setOutput('forge-out-personality','forge-tok-personality', buildPersonality());
+    setOutput('forge-out-firstmes',   'forge-tok-firstmes',   buildFirstMessage());
+    setOutput('forge-out-dialogue',   'forge-tok-dialogue',   buildExampleDialogue());
+    setOutput('forge-out-sysprompt',  'forge-tok-sysprompt',  buildSystemPrompt());
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// COPY / EXPORT
+// ═══════════════════════════════════════════════════════════════════════════
+function getBlockText(id) {
+    const el = document.getElementById(id);
+    if (!el) return '';
+    const clone = el.cloneNode(true);
+    clone.querySelectorAll('.forge-copy-btn').forEach(b => b.remove());
+    return clone.textContent.trim();
+}
+
+function copyBlock(id, btn) {
+    const t = getBlockText(id);
+    if (!t || t.includes('Fill in')) return;
+    navigator.clipboard.writeText(t).then(() => {
+        if (btn) { btn.textContent = 'Copied!'; btn.classList.add('copied'); setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500); }
+    });
+}
+
+function exportJSON() {
+    const data = {
+        character: { name:g('forge-char-name'), age:g('forge-char-age'), pronouns:kwGet('pronouns'), species:kwGet('species'), role:kwGet('role'), background:kwGet('background'), build:kwGet('build'), height:kwGet('height'), skin:kwGet('skin'), hair:kwGet('hair'), eyes:kwGet('eyes'), face:kwGet('face'), marks:kwGet('marks'), scent:kwGet('scent'), nonhuman:kwGet('nonhuman'), personality:kwGet('personality'), disposition:kwGet('disposition'), traits:kwGet('traits'), skills:kwGet('skills'), voiceNote:g('forge-voice-note'), anatomy:{ chest:kwGet('chest'), nipples:kwGet('nipples'), genitaliaA:kwGet('genitalia-a'), genitaliaB:kwGet('genitalia-b'), rear:kwGet('rear'), pubic:kwGet('pubic'), anal:kwGet('anal'), fluids:kwGet('fluids'), fertility:kwGet('fertility'), erogenous:kwGet('erogenous'), bodymod:kwGet('bodymod') }, sexual:{ experience:kwGet('experience'), role:kwGet('sexrole'), verbal:kwGet('verbal'), kinks:kwGet('kinks'), likes:kwGet('likes'), limits:kwGet('limits'), triggers:kwGet('triggers') } },
+        scene:  { location:kwGet('location'), atmosphere:kwGet('atmosphere'), situation:kwGet('situation'), mood:kwGet('mood'), npcs:g('forge-scene-npcs'), player:g('forge-scene-player'), hook:g('forge-scene-hook'), full:g('forge-scene-full') },
+        style:  { mode:_sceneMode, pov:kwGet('pov'), tense:kwGet('tense'), rhythm:kwGet('rhythm'), vocab:kwGet('vocab'), pacing:kwGet('pacing'), focus:kwGet('descfocus'), toggles:getActiveToggles(), custom:g('forge-style-custom'), personaNote:g('forge-persona-note'), author:g('forge-style-author'), title:g('forge-style-title'), genre:g('forge-style-genre'), rating:g('forge-style-rating') },
+        relationships:_relationships, worldInfoEntries:_loreEntries, dialogue:_dialoguePairs,
+        tags:g('forge-st-tags'), cardFormat:_cardFormat, explicitAnatomy:_explicitAnat,
+        output:{ description:buildDescription(), personality:buildPersonality(), firstMessage:buildFirstMessage(), exampleDialogue:buildExampleDialogue(), systemPrompt:buildSystemPrompt() },
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type:'application/json' });
+    const url  = URL.createObjectURL(blob);
+    const a    = Object.assign(document.createElement('a'), { href:url, download:`forge-${(g('forge-char-name')||'character').toLowerCase().replace(/\s+/g,'-')}.json` });
+    a.click(); URL.revokeObjectURL(url);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// RANDOMIZE / CLEAR
+// ═══════════════════════════════════════════════════════════════════════════
+function rfld(id, arr)  { const el = document.getElementById(id); if (el) { el.value = pick(arr); regen(); } }
+function rndAge()       { const el = document.getElementById('forge-char-age'); if (el) { el.value = pick([18,19,20,21,22,24,26,28,30,35,40,50,100,200,500,1000]); regen(); } }
+
+function randomizeAll() {
+    rfld('forge-char-name', NAMES); rndAge();
+    ['pronouns','species','role','background','build','height','skin','hair','eyes','face','marks','scent','nonhuman',
+     'personality','disposition','traits','skills',
+     'chest','nipples','rear','pubic','anal','fluids','fertility','erogenous','bodymod',
+     'experience','sexrole','verbal','kinks','likes','limits','triggers',
+     'location','atmosphere','situation','mood','pov','tense','rhythm','vocab','pacing','descfocus'
+    ].forEach(k => kwRandom(k));
+    // Genitalia special case
+    KW_STATE['genitalia-a'] = []; KW_STATE['genitalia-b'] = [];
+    const gt = pick(['vagina','penis','futanari — both']);
+    kwToggleItem('genitalia-a', gt);
+    if (gt === 'penis' || gt === 'futanari — both') {
+        kwToggleItem('genitalia-a', pick(['humanoid penis','equine penis','canine penis — knotted','draconic penis']));
+        kwToggleItem('genitalia-a', pick(['average — 6in','large — 8in','impressive — 9in']));
+        kwToggleItem('genitalia-a', pick(['thick','girthy','average girth']));
+        kwToggleItem('genitalia-a', pick(['ridged — light','knotted — one','medial ring','flared tip','smooth']));
+    }
+    if (gt === 'vagina' || gt === 'futanari — both') {
+        kwToggleItem('genitalia-a', pick(['outer labia — full','outer labia — slim','inner labia — protruding']));
+        kwToggleItem('genitalia-a', pick(['tight','very tight','accommodating']));
+        kwToggleItem('genitalia-a', pick(['velvety interior','ridged interior','smooth interior']));
+    }
+    rfld('forge-scene-hook', HOOKS);
+    ['forge-sl-ds','forge-sl-sb','forge-sl-cw','forge-sl-pc'].forEach(id => {
+        const el = document.getElementById(id); if (el) { el.value = Math.floor(Math.random() * 11); slv(id); }
+    });
+    regen();
+}
+
+function clearAll() {
+    document.querySelectorAll('#forge-panel input[type="text"],#forge-panel input[type="number"],#forge-panel textarea').forEach(el => { el.value = ''; });
+    Object.keys(KW_STATE).forEach(k => { KW_STATE[k] = []; kwRender(k); });
+    ['forge-sl-ds','forge-sl-sb','forge-sl-cw','forge-sl-pc'].forEach(id => { const el = document.getElementById(id); if (el) { el.value = 5; slv(id); } });
+    _relationships = []; _loreEntries = []; _dialoguePairs = [];
+    renderRelationships(); renderLore(); renderDialogue(); regen();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// UI CONTROLS
+// ═══════════════════════════════════════════════════════════════════════════
+function setFormat(fmt, btn) {
+    _cardFormat = fmt; setSetting('cardFormat', fmt);
+    document.querySelectorAll('.forge-format-btn').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    regen();
+}
+function toggleExplicit(el) {
+    el.classList.toggle('active');
+    _explicitAnat = el.classList.contains('active');
+    setSetting('explicitAnatomy', _explicitAnat);
+    regen();
+}
+function toggleFav(el) {
+    el.classList.toggle('active');
+    _isFav = el.classList.contains('active');
+    setSetting('isFav', _isFav);
+}
+
+function generateAvatarPrompt() {
+    const name = g('forge-char-name') || 'character';
+    const parts = [`portrait of ${name}`,
+        ...[...cleanList(kwGet('build')),...cleanList(kwGet('height'))],
+        kwGet('skin').length  ? join(cleanList(kwGet('skin')))  + ' skin'  : '',
+        kwGet('hair').length  ? join(cleanList(kwGet('hair')))  + ' hair'  : '',
+        kwGet('eyes').length  ? join(cleanList(kwGet('eyes')))  + ' eyes'  : '',
+        ...cleanList(kwGet('face')),
+        ...cleanList(kwGet('nonhuman')),
+        ...cleanList(kwGet('marks')),
+        'dramatic lighting, high quality fantasy portrait',
+    ].filter(Boolean);
+    const prompt = parts.join(', ');
+    const el = document.getElementById('forge-out-avatar-prompt');
+    if (el) { el.style.display = 'block'; el.textContent = prompt; }
+    navigator.clipboard.writeText(prompt).catch(() => {});
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ST CARD READ / WRITE / CREATE / WORLD INFO PUSH
+// ═══════════════════════════════════════════════════════════════════════════
+async function writeToCard() {
+    const btn = document.getElementById('forge-write-card-btn');
+    if (btn) { btn.textContent = '…writing'; btn.disabled = true; }
+    try {
+        const ctx    = getContext();
+        const charId = ctx?.characterId;
+        if (charId == null) { showStatus('No character selected in ST.', true); return; }
+
+        const charData = {
+            name:          g('forge-char-name') || ctx.characters[charId]?.name || '',
+            description:   buildDescription()     || '',
+            personality:   buildPersonality()     || '',
+            first_mes:     buildFirstMessage()    || '',
+            mes_example:   buildExampleDialogue() || '',
+            system_prompt: buildSystemPrompt()    || '',
+            fav:           _isFav,
+            tags:          g('forge-st-tags').split(',').map(t => t.trim()).filter(Boolean),
+        };
+
+        if (typeof _saveCharacter === 'function') {
+            await _saveCharacter(charId, charData);
+        } else {
+            // Fallback: populate ST's form fields and trigger save
+            const setField = (sel, val) => {
+                const el = document.querySelector(sel);
+                if (el && val != null) { el.value = val; el.dispatchEvent(new Event('input', { bubbles: true })); }
+            };
+            setField('#character_name_pole',            charData.name);
+            setField('#character_description_pole',     charData.description);
+            setField('#character_personality_pole',     charData.personality);
+            setField('#character_first_message_pole',   charData.first_mes);
+            setField('#character_mes_example_pole',     charData.mes_example);
+            setField('#character_system_prompt_pole',   charData.system_prompt);
+            const saveBtn = document.querySelector('#create_button,[name="create_button"]');
+            if (saveBtn) saveBtn.click();
+        }
+        setSetting('lastCharId', charId);
+        showStatus(`✓ Written to "${charData.name || 'character'}" card.`);
+    } catch (err) {
+        console.error('[FORGE] writeToCard:', err);
+        showStatus('Write failed — check console.', true);
+    } finally {
+        if (btn) { btn.textContent = '⬛ Write to Card'; btn.disabled = false; }
+    }
+}
+
+async function loadFromCard() {
+    try {
+        const ctx  = getContext();
+        const char = ctx?.characters?.[ctx?.characterId];
+        if (!char) { showStatus('No character selected.', true); return; }
+
+        const sv = (id, val) => { const el = document.getElementById(id); if (el && val != null) el.value = val; };
+        sv('forge-char-name', char.name || '');
+        sv('forge-st-tags', Array.isArray(char.tags) ? char.tags.join(', ') : (char.tags || ''));
+        if (char.first_mes)     sv('forge-scene-full',   char.first_mes);
+        if (char.system_prompt) sv('forge-persona-note', char.system_prompt);
+        if (char.personality)   sv('forge-voice-note',   char.personality);
+
+        const favEl = document.getElementById('forge-fav-toggle');
+        if (favEl) { _isFav = !!char.fav; favEl.classList.toggle('active', _isFav); }
+
+        // Attempt W++ parse back into chip state
+        if (char.description?.startsWith('[character(')) _parseWpp(char.description);
+
+        refreshAvatarDisplay();
+        regen();
+        showStatus(`✓ Loaded from "${char.name || 'character'}".`);
+    } catch (err) {
+        console.error('[FORGE] loadFromCard:', err);
+        showStatus('Load failed — check console.', true);
+    }
+}
+
+function _parseWpp(text) {
+    try {
+        const nm = text.match(/\[character\("([^"]+)"\)/);
+        if (nm) { const el = document.getElementById('forge-char-name'); if (el) el.value = nm[1]; }
+        const bRe = /(\w+)\(((?:"[^"]*"\s*)+)\)/g;
+        const map  = { personality:'traits', appearance:'build', background:'background', skills:'skills', body:'chest', sexual:'genitalia-a', kinks:'kinks', limits:'limits', sexrole:'sexrole', nonhuman:'nonhuman' };
+        let m;
+        while ((m = bRe.exec(text)) !== null) {
+            const kwKey = map[m[1].toLowerCase()];
+            if (kwKey) kwSet(kwKey, [...m[2].matchAll(/"([^"]*)"/g)].map(v => v[1]));
+        }
+    } catch (_) { /* partial parse OK */ }
+}
+
+async function createNewCard() {
+    try {
+        const name = g('forge-char-name') || 'New Character';
+        if (typeof _createCharacter === 'function') {
+            await _createCharacter({ name });
+            showStatus(`✓ Created "${name}". Fill details and Write to Card.`);
+        } else {
+            const btn = document.querySelector('#rm_button_create,#create_new_character');
+            if (btn) { btn.click(); showStatus('Opened new character — Write to Card when ready.'); }
+            else showStatus('Could not find ST new-character button.', true);
+        }
+    } catch (err) {
+        console.error('[FORGE] createNewCard:', err);
+        showStatus('Create failed — check console.', true);
+    }
+}
+
+async function pushWorldInfo() {
+    const sel  = document.getElementById('forge-world-target');
+    const world = sel?.value;
+    if (!world)  { showStatus('Select a world target first.', true); return; }
+    if (!_loreEntries.length) { showStatus('No entries to push.', true); return; }
+    if (typeof _createWorldInfoEntry !== 'function') { showStatus('World Info API unavailable in this ST build.', true); return; }
+    let pushed = 0;
+    for (const e of _loreEntries) {
+        if (!e.keyword && !e.content) continue;
+        try { await _createWorldInfoEntry(world, { key:[e.keyword||''], content:e.content||'', comment:e.keyword||'FORGE entry' }); pushed++; }
+        catch (err) { console.warn('[FORGE] pushWorldInfo entry:', err); }
+    }
+    showStatus(`✓ Pushed ${pushed} entr${pushed !== 1 ? 'ies' : 'y'} to "${world}".`);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// WIDGET INIT (called once overlay DOM is ready)
+// ═══════════════════════════════════════════════════════════════════════════
+function initAllWidgets() {
+    const BINDINGS = [
+        ['pronouns','fw-pronouns'],    ['species','fw-species'],       ['role','fw-role'],
+        ['background','fw-background'],['build','fw-build'],           ['height','fw-height'],
+        ['skin','fw-skin'],            ['hair','fw-hair'],             ['eyes','fw-eyes'],
+        ['face','fw-face'],            ['marks','fw-marks'],           ['scent','fw-scent'],
+        ['nonhuman','fw-nonhuman'],    ['personality','fw-personality'],['disposition','fw-disposition'],
+        ['traits','fw-traits'],        ['skills','fw-skills'],
+        ['chest','fw-chest'],          ['nipples','fw-nipples'],       ['genitalia-a','fw-genitalia-a'],
+        ['genitalia-b','fw-genitalia-b'],['rear','fw-rear'],           ['pubic','fw-pubic'],
+        ['anal','fw-anal'],            ['fluids','fw-fluids'],         ['fertility','fw-fertility'],
+        ['erogenous','fw-erogenous'],  ['bodymod','fw-bodymod'],
+        ['experience','fw-experience'],['sexrole','fw-sexrole'],       ['verbal','fw-verbal'],
+        ['kinks','fw-kinks'],          ['likes','fw-likes'],           ['limits','fw-limits'],
+        ['triggers','fw-triggers'],    ['location','fw-location'],     ['atmosphere','fw-atmosphere'],
+        ['situation','fw-situation'],  ['mood','fw-mood'],
+        ['pov','fw-pov'],              ['tense','fw-tense'],           ['rhythm','fw-rhythm'],
+        ['vocab','fw-vocab'],          ['pacing','fw-pacing'],         ['descfocus','fw-descfocus'],
+    ];
+    BINDINGS.forEach(([key, cid]) => kwInit(key, cid));
+    renderRelationships(); renderScenePresets(); renderSceneModes();
+    renderWorldLorePresets(); renderLore(); renderDialogue();
+    ['forge-sl-ds','forge-sl-sb','forge-sl-cw','forge-sl-pc'].forEach(id => slv(id));
+    regen();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// FORGE NAMESPACE  — exposed on window for inline HTML onclick handlers
+// ═══════════════════════════════════════════════════════════════════════════
+const FORGE = {
+    // data refs used by inline handlers in creator.html
+    NAMES, NPC_PRESETS, HOOKS,
+
+    // panel
+    open:  openPanel,
+    close: closePanel,
+
+    // chip engine
+    kwToggleDD, kwRandom, kwSet, kwGet,
+
+    // output
+    regen,
+
+    // UI
+    setFormat, toggleExplicit, toggleFav, toggleItem,
+    toggleSection, collapseAll, expandAll, slv,
+    rfld, rndAge, randomizeAll, clearAll,
+    copyBlock, exportJSON, generateAvatarPrompt,
+
+    // renderers
+    renderLore, renderDialogue, renderRelationships,
+    addRelationship, removeRelationship, randomizeRelationships,
+    addLore, sendCharToWorldInfo,
+    addDialoguePair, randomizeDialogue,
+
+    // ST API
+    writeToCard, loadFromCard, createNewCard, pushWorldInfo,
+};
+
+window.FORGE = FORGE;
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ENTRY POINT
+// ═══════════════════════════════════════════════════════════════════════════
+// ST loads extensions after DOM ready; direct async call works in all ST versions
+(async () => { await extensionInit(); })();
+
+export {
+    openPanel, closePanel,
+    refreshWorldTargetDropdown, refreshAvatarDisplay, showStatus,
+    getSetting, setSetting,
+    _saveCharacter, _createCharacter, _createWorldInfoEntry, _getTokenCount,
+    _eventSource, _event_types,
+};
