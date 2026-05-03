@@ -7,6 +7,10 @@
 
 /* ── FORGE button injected into ST UI ── */
 #forge-open-btn {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 9000;
   background: linear-gradient(135deg, #3e3018 0%, #2a2014 100%);
   border: 1px solid #d4aa5f;
   border-radius: 3px;
@@ -15,14 +19,35 @@
   font-family: 'Cinzel', serif;
   font-size: 11px;
   letter-spacing: 0.15em;
-  padding: 6px 14px;
+  padding: 8px 16px;
   transition: all 0.15s;
   text-transform: uppercase;
-  margin: 2px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.6);
 }
 #forge-open-btn:hover {
   background: linear-gradient(135deg, #4e3e22 0%, #3a2c18 100%);
-  box-shadow: 0 0 12px rgba(212,170,95,0.25);
+  box-shadow: 0 0 18px rgba(212,170,95,0.35);
+}
+
+/* Button inside extension settings drawer */
+#forge-ext-open-btn {
+  width: 100%;
+  padding: 8px;
+  margin-top: 4px;
+  background: linear-gradient(135deg, #3e3018 0%, #2a2014 100%);
+  border: 1px solid #d4aa5f;
+  border-radius: 3px;
+  color: #d4aa5f;
+  cursor: pointer;
+  font-family: 'Cinzel', serif;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  transition: all 0.15s;
+}
+#forge-ext-open-btn:hover {
+  background: linear-gradient(135deg, #4e3e22 0%, #3a2c18 100%);
+  box-shadow: 0 0 10px rgba(212,170,95,0.25);
 }
 
 /* ── OVERLAY ── */
