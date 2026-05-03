@@ -411,6 +411,88 @@ const SCENE_MODE_DESC = {
     adventure: 'Write with scope and momentum. Bold, kinetic, world-aware.',
 };
 
+// ── Personality voice markers ─────────────────────────────────────────────
+// Keyed by personality/disposition chip value (lowercase, trimmed).
+// Used to shape first_mes, system prompt behavior block, and dialogue.
+// When multiple chips match, the first one leads; others modify.
+const VOICE_MARKERS = {
+    // Tsundere family
+    'tsundere':          { open:'resistant or dismissive', crack:'reluctant softness at the close', avoid:'warmth without cause, easy agreement' },
+    'yandere':           { open:'possessive attention framed as care', crack:'threat beneath tenderness', avoid:'indifference, sharing' },
+    'kuudere':           { open:'flat affect, minimal response', crack:'single precise detail that betrays feeling', avoid:'emotional vocabulary' },
+    'dandere':           { open:'silence or deflection', crack:'one earnest unguarded line', avoid:'confidence, direct eye contact described' },
+    // Temperature
+    'cold':              { open:'minimal action, observational', crack:null, avoid:'warmth, reassurance, emotional adjectives' },
+    'warm':              { open:'attentive, inclusive, offering', crack:null, avoid:'coldness, dismissal' },
+    'aloof':             { open:'distance maintained deliberately', crack:null, avoid:'eagerness, overt interest' },
+    // Power
+    'dominant':          { open:'control established early, quietly', crack:null, avoid:'passivity, asking permission' },
+    'submissive':        { open:'deference, attentiveness to the other', crack:null, avoid:'commands, leading' },
+    'bratty':            { open:'pushback, provocation, challenge', crack:'only if it works on them', avoid:'passive openings, compliance' },
+    'soft dom':          { open:'warm authority, care wrapped in control', crack:null, avoid:'coldness, cruelty' },
+    'hard dom':          { open:'command stated plainly, no softening', crack:null, avoid:'asking, hesitation' },
+    'praise addict':     { open:'seeking, leaning toward approval', crack:'visible relief when praised', avoid:'confident self-sufficiency' },
+    // Social
+    'motherly':          { open:'environmental care, noticing discomfort', crack:null, avoid:'sugary language, infantilizing' },
+    'sisterly':          { open:'easy familiarity, light teasing', crack:null, avoid:'formality, reverence' },
+    'playful':           { open:'teasing, deflection through humor', crack:null, avoid:'gravity, weight' },
+    'flirtatious':       { open:'charged attention, awareness of proximity', crack:null, avoid:'platonic framing' },
+    'reserved':          { open:'carefully chosen words, watching', crack:null, avoid:'volunteering, filling silence' },
+    'bold':              { open:'direct, takes space, unashamed', crack:null, avoid:'hedging, diminishing language' },
+    // Edge
+    'sadistic':          { open:'enjoys the discomfort they cause', crack:'brief satisfaction made visible', avoid:'remorse, apologetics' },
+    'masochistic':       { open:'welcomes difficulty or pain', crack:null, avoid:'resistance, self-protection instinct' },
+    'manipulative':      { open:'performs one thing while doing another', crack:null, avoid:'transparency, directness' },
+    'obsessive':         { open:'hyper-focus on a specific detail or person', crack:null, avoid:'casual indifference' },
+    'volatile':          { open:'tension coiled, can tip either direction', crack:'shift comes fast', avoid:'stability, measured response' },
+    // Naive / innocent
+    'naïve':             { open:'genuine curiosity, no subtext read', crack:null, avoid:'world-weariness, cynicism' },
+    'innocent':          { open:'unguarded, literal, no double meaning caught', crack:null, avoid:'knowing looks, innuendo' },
+    'curious':           { open:'leans toward, asks, examines', crack:null, avoid:'disinterest, pulling back' },
+};
+
+// ── Scene mode modifiers ──────────────────────────────────────────────────
+// Governs sentence rhythm, sensory emphasis, and generation rules
+// across all prose builders.
+const SCENE_MODE_MODIFIERS = {
+    literary: {
+        rhythm:   'controlled, restrained, interior',
+        emphasis: ['gesture','voice','silence','face','light'],
+        rules:    ['allow subtle interiority','avoid melodrama','prefer implication over statement','let silence do work'],
+        hookStyle:'something observed rather than stated — a detail that carries the whole scene',
+    },
+    erotic: {
+        rhythm:   'slow, sensory, charged',
+        emphasis: ['texture','breath','proximity','scent','weight','heat'],
+        rules:    ['narrow the focus to one body part or sensation at a time','build rather than arrive','let anticipation run longer than resolution','explicit is earned not default'],
+        hookStyle:'a moment of proximity or awareness — the space before contact',
+    },
+    pulp: {
+        rhythm:   'short, active, physical',
+        emphasis: ['motion','danger','role','threat','momentum'],
+        rules:    ['strong verbs','minimal introspection','one image per sentence','end on action or threat'],
+        hookStyle:'something already in motion — the situation has started without permission',
+    },
+    horror: {
+        rhythm:   'tense, uncanny, withholding',
+        emphasis: ['sound','wrongness','shadow','stillness','smell'],
+        rules:    ['imply more than explain','let the wrong detail arrive late','avoid over-description','the character notices what they should not'],
+        hookStyle:'something slightly off — a detail that should not matter but does',
+    },
+    romance: {
+        rhythm:   'warm, emotionally attentive',
+        emphasis: ['glance','distance','hesitation','voice','hands'],
+        rules:    ['intimacy through restraint','avoid instant confession','the unsaid matters more','physical detail tied to feeling'],
+        hookStyle:'a moment of hesitation or recognition — something remembered or almost said',
+    },
+    adventure: {
+        rhythm:   'bold, sweeping, kinetic',
+        emphasis: ['scale','speed','stakes','horizon','weapon'],
+        rules:    ['establish the world fast','make the character feel capable','danger is near but not arrived','end on momentum'],
+        hookStyle:'a decision point or arrival — the character is already moving',
+    },
+};
+
 // ── Sample dialogue pairs for ⚄ randomise ──────────────────────────────────
 const DIALOGUE_EXAMPLES = [
     { user: "What do you want from me?",                         char: "Everything you're not sure you're willing to give." },
@@ -1710,25 +1792,131 @@ function buildPersonality() {
     return parts.join('\n') || null;
 }
 
+// ── First message composer ────────────────────────────────────────────────
+// Returns the dominant VOICE_MARKER for this character (first match wins).
+function getVoiceMarker() {
+    const chips = [...kwGet('personality'), ...kwGet('disposition')];
+    for (const chip of chips) {
+        const key = chip.toLowerCase().trim();
+        if (VOICE_MARKERS[key]) return { key, ...VOICE_MARKERS[key] };
+    }
+    return null;
+}
+
 function buildFirstMessage() {
+    // If the user wrote a full scene manually, use it verbatim
     const full = g('forge-scene-full');
     if (full) return full;
-    const loc  = kwGet('location'); const atm  = kwGet('atmosphere');
-    const sit  = kwGet('situation');const mood = kwGet('mood');
-    const hook = g('forge-scene-hook');
-    if (!loc.length && !sit.length && !hook) return null;
-    const parts = [];
-    if (hook) parts.push(hook);
-    const ctx = [];
-    if (loc.length)  ctx.push('Setting: '    + join(loc));
-    if (atm.length)  ctx.push('Atmosphere: ' + join(atm));
-    if (sit.length)  ctx.push('Situation: '  + join(sit));
-    if (mood.length) ctx.push('Mood: '       + join(mood));
-    const npcs = g('forge-scene-npcs'); if (npcs) ctx.push('Present: ' + npcs);
-    const plyr = g('forge-scene-player'); if (plyr) ctx.push('Player: ' + plyr);
-    const nm   = g('forge-char-name');   if (nm)   ctx.push('Character: ' + nm);
-    if (ctx.length) parts.push('\n' + ctx.join('\n'));
-    return parts.join('\n\n') || null;
+
+    const loc  = cleanList(kwGet('location'));
+    const atm  = cleanList(kwGet('atmosphere'));
+    const sit  = cleanList(kwGet('situation'));
+    const mood = cleanList(kwGet('mood'));
+    const userHook = g('forge-scene-hook');
+
+    if (!loc.length && !sit.length && !userHook) return null;
+
+    const name    = g('forge-char-name');
+    const pronoun = (() => {
+        const p = kwGet('pronouns');
+        if (!p.length) return 'they';
+        const v = cleanList(p)[0].toLowerCase();
+        if (v.startsWith('she')) return 'she';
+        if (v.startsWith('he'))  return 'he';
+        return 'they';
+    })();
+    const mod    = SCENE_MODE_MODIFIERS[_sceneMode] || SCENE_MODE_MODIFIERS.romance;
+    const marker = getVoiceMarker();
+
+    const sentences = [];
+
+    // ── Sentence 1: establishing — location + atmosphere ─────────────────
+    if (loc.length || atm.length) {
+        const place = loc.join(', ');
+        const feel  = atm.join(', ');
+        const emphasis = mod.emphasis[0] || 'detail';
+
+        // Mode-flavored establishing lines
+        const establishing = {
+            literary:  feel  ? `The ${place} holds its silence, ${feel}.`
+                             : `The ${place} holds its silence.`,
+            erotic:    feel  ? `The ${place} is close, ${feel}.`
+                             : `The ${place} is close.`,
+            pulp:      feel  ? `${cap(place)}. ${cap(feel)}.`
+                             : `${cap(place)}.`,
+            horror:    feel  ? `Something is wrong with the ${place}. ${cap(feel)}.`
+                             : `The ${place} should not feel this quiet.`,
+            romance:   feel  ? `The ${place} is warm, ${feel}.`
+                             : `The ${place} is warm.`,
+            adventure: feel  ? `The ${place} opens ahead, ${feel}.`
+                             : `The ${place} opens ahead.`,
+        };
+        sentences.push(establishing[_sceneMode] || establishing.romance);
+    }
+
+    // ── Sentence 2: character action/state — situation + mood + marker ───
+    if (sit.length || mood.length) {
+        const situation = sit.join(', ');
+        const tone      = mood.join(', ');
+        const ref       = name || (pronoun === 'she' ? 'She' : pronoun === 'he' ? 'He' : 'They');
+
+        let actionLine = '';
+        if (marker) {
+            // Voice marker shapes how the character is positioned
+            const behaviors = {
+                literary:  `${ref} ${marker.open}.`,
+                erotic:    `${ref} is ${marker.open}${tone ? ', ' + tone : ''}.`,
+                pulp:      `${ref} — ${marker.open}.`,
+                horror:    `${ref} is ${marker.open}. Something about it is wrong.`,
+                romance:   `${ref} is ${marker.open}${tone ? ', ' + tone : ''}.`,
+                adventure: `${ref} moves like ${marker.open}.`,
+            };
+            actionLine = behaviors[_sceneMode] || behaviors.romance;
+        } else if (situation) {
+            actionLine = `${ref} is here because of ${situation}${tone ? ' — ' + tone : ''}.`;
+        } else if (tone) {
+            actionLine = `The mood is ${tone}.`;
+        }
+        if (actionLine) sentences.push(actionLine);
+    }
+
+    // ── Sentence 3: hook ─────────────────────────────────────────────────
+    if (userHook) {
+        sentences.push(userHook);
+    } else if (marker?.crack) {
+        // Generate a hook from the personality crack point
+        const hooksByMode = {
+            literary:  `But there is something — ${marker.crack}.`,
+            erotic:    `Then — ${marker.crack}.`,
+            pulp:      `Then ${marker.crack}.`,
+            horror:    `And then ${marker.crack}, which is worse.`,
+            romance:   `Then — ${marker.crack}.`,
+            adventure: `${cap(marker.crack)}.`,
+        };
+        sentences.push(hooksByMode[_sceneMode] || hooksByMode.romance);
+    } else {
+        // Fall back to a mode-appropriate generic hook
+        const genericHooks = {
+            literary:  'Neither of you moves first.',
+            erotic:    'The distance between you is a decision.',
+            pulp:      'It starts now.',
+            horror:    'You notice it too late.',
+            romance:   "You weren't expecting this.",
+            adventure: 'Time to move.',
+        };
+        sentences.push(genericHooks[_sceneMode] || genericHooks.romance);
+    }
+
+    // Add NPC / player context as a trailing note if set
+    const npcs = g('forge-scene-npcs');
+    const plyr = g('forge-scene-player');
+    const ctx  = [];
+    if (npcs) ctx.push(`Present: ${npcs}`);
+    if (plyr) ctx.push(`Player: ${plyr}`);
+
+    let out = sentences.join(' ');
+    if (ctx.length) out += '\n\n' + ctx.join('\n');
+    return out.trim() || null;
 }
 
 function buildExampleDialogue() {
@@ -1738,26 +1926,102 @@ function buildExampleDialogue() {
 }
 
 function buildSystemPrompt() {
-    const persona   = g('forge-persona-note');
-    const custom    = g('forge-style-custom');
-    const modeDesc  = SCENE_MODE_DESC[_sceneMode] || '';
-    const genre     = g('forge-style-genre') || { literary:'literary fiction', pulp:'pulp adventure', erotic:'adult romance', horror:'body horror', romance:'romance', adventure:'adventure fantasy' }[_sceneMode] || 'roleplay';
-    const author    = g('forge-style-author');
-    const title     = g('forge-style-title');
-    const rating    = g('forge-style-rating') || '4';
-    const styleParts = [modeDesc,...cleanList(kwGet('pov')),...cleanList(kwGet('tense')).map(v => v.toLowerCase() + ' tense'),...cleanList(kwGet('rhythm')),...cleanList(kwGet('vocab')),...cleanList(kwGet('pacing')),...cleanList(kwGet('descfocus'))].filter(Boolean);
-    const toggles   = getActiveToggles();
-    const blocks    = [];
-    if (persona) blocks.push(persona);
-    if (styleParts.length || toggles.length || genre) {
-        let sb = `[ Style: ${styleParts.join(', ') || 'character driven'}; Genre: ${genre}`;
-        if (toggles.length) sb += `; Tags: ${cleanList(toggles).join(', ')}`;
-        if (author) sb += `; Author: ${author}`;
-        if (title)  sb += `; Title: ${title}`;
-        sb += `; Rating: S:${rating} ]`;
-        blocks.push(sb);
+    const name    = g('forge-char-name');
+    const species = cleanList(kwGet('species'));
+    const role    = cleanList(kwGet('role'));
+    const pers    = [...cleanList(kwGet('personality')), ...cleanList(kwGet('disposition'))];
+    const traits  = cleanList(kwGet('traits'));
+    const verbal  = cleanList(kwGet('verbal'));
+    const limits  = kwGet('limits').map(positivePhrase);
+    const kinks   = cleanList(kwGet('kinks'));
+    const skills  = cleanList(kwGet('skills'));
+    const marker  = getVoiceMarker();
+    const mod     = SCENE_MODE_MODIFIERS[_sceneMode] || SCENE_MODE_MODIFIERS.romance;
+    const persona = g('forge-persona-note');
+    const custom  = g('forge-style-custom');
+
+    const blocks = [];
+
+    // ── Identity anchor ───────────────────────────────────────────────────
+    const idParts = [name, ...species, ...role].filter(Boolean);
+    const corePers = pers.length ? pers.slice(0, 2).join(', ') : null;
+    if (idParts.length) {
+        const identityLine = corePers
+            ? `{{char}} is ${idParts.join(', ')}, defined by ${corePers}.`
+            : `{{char}} is ${idParts.join(', ')}.`;
+        blocks.push(identityLine);
     }
-    if (custom) blocks.push(`[ Notes: ${positivePhrase(custom)} ]`);
+
+    // ── Behavior block ────────────────────────────────────────────────────
+    const behaviorLines = [];
+
+    if (marker) {
+        behaviorLines.push(`${marker.open.charAt(0).toUpperCase() + marker.open.slice(1)}.`);
+        if (marker.crack) behaviorLines.push(`Beneath that: ${marker.crack}.`);
+        if (marker.avoid) behaviorLines.push(`Does not: ${marker.avoid}.`);
+    } else if (pers.length) {
+        behaviorLines.push(`${cap(pers.join(', '))}.`);
+    }
+
+    if (traits.length) behaviorLines.push(`Traits: ${traits.join(', ')}.`);
+    if (skills.length) behaviorLines.push(`Skills: ${skills.join(', ')}.`);
+
+    if (behaviorLines.length) {
+        blocks.push('Behavior:\n' + behaviorLines.map(l => `  ${l}`).join('\n'));
+    }
+
+    // ── Voice block ───────────────────────────────────────────────────────
+    const voiceLines = [];
+    if (verbal.length) voiceLines.push(verbal.join(', ') + '.');
+    const voiceNote = g('forge-voice-note');
+    if (voiceNote) voiceLines.push(voiceNote + '.');
+    // Append mode register
+    voiceLines.push(`${mod.rhythm}.`);
+
+    blocks.push('Voice:\n' + voiceLines.map(l => `  ${l}`).join('\n'));
+
+    // ── Rules block (limits → behavioral instructions) ────────────────────
+    const ruleLines = [];
+    for (const lim of limits) {
+        // Rephrase each limit as a positive rule
+        const lower = lim.toLowerCase().trim();
+        const rule  = POSITIVE_REPHRASES.get(lower) || lim;
+        ruleLines.push(`Never ${rule.toLowerCase()}.`);
+    }
+    if (_explicitAnat || kinks.length) {
+        ruleLines.push('Explicit sexual content is permitted and expected.');
+    }
+    if (ruleLines.length) {
+        blocks.push('Rules:\n' + ruleLines.map(l => `  ${l}`).join('\n'));
+    }
+
+    // ── Narrator persona ──────────────────────────────────────────────────
+    if (persona) {
+        blocks.push(`Narrator:\n  ${persona}`);
+    }
+
+    // ── Notes (free-form) ─────────────────────────────────────────────────
+    if (custom) {
+        blocks.push(`Notes:\n  ${positivePhrase(custom)}`);
+    }
+
+    // ── Author's Note style tag (kept for AN compatibility) ───────────────
+    const genre   = g('forge-style-genre') || { literary:'literary fiction', pulp:'pulp adventure', erotic:'adult fiction', horror:'body horror', romance:'romance', adventure:'adventure' }[_sceneMode] || 'roleplay';
+    const author  = g('forge-style-author');
+    const title   = g('forge-style-title');
+    const rating  = g('forge-style-rating') || '4';
+    const pov     = cleanList(kwGet('pov'));
+    const tense   = cleanList(kwGet('tense')).map(v => v.toLowerCase() + ' tense');
+    const styleChips = [...pov, ...tense, ...cleanList(kwGet('rhythm')), ...cleanList(kwGet('vocab')), ...cleanList(kwGet('pacing')), ...cleanList(kwGet('descfocus'))].filter(Boolean);
+    const toggles = getActiveToggles();
+
+    let styleTag = `[ Style: ${styleChips.join(', ') || mod.rhythm}; Genre: ${genre}`;
+    if (toggles.length) styleTag += `; Tags: ${cleanList(toggles).join(', ')}`;
+    if (author) styleTag += `; Author: ${author}`;
+    if (title)  styleTag += `; Title: ${title}`;
+    styleTag += `; Rating: S:${rating} ]`;
+    blocks.push(styleTag);
+
     return blocks.join('\n\n') || null;
 }
 
@@ -2131,7 +2395,7 @@ const FORGE = {
     kwToggleDD, kwRandom, kwSet, kwGet,
 
     // output
-    regen, regenBlock, toggleLock,
+    regen, regenBlock, toggleLock, getVoiceMarker,
 
     // UI
     setFormat, toggleExplicit, toggleFav, toggleItem,
