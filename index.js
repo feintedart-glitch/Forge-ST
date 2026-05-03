@@ -5,7 +5,16 @@
  * Commit 1 of 3: Extension registration, settings, UI injection, event hooks
  */
 
-import { extension_settings, getContext, saveSettingsDebounced } from '../../../extensions.js';
+import { extension_settings, getContext } from '../../../extensions.js';
+
+// saveSettingsDebounced and renderExtensionTemplateAsync may or may not be in
+// extensions.js depending on ST version — fetch dynamically to avoid import errors
+let saveSettingsDebounced = () => {};
+let renderExtensionTemplateAsync = null;
+import('../../../extensions.js').then(m => {
+    if (typeof m.saveSettingsDebounced === 'function') saveSettingsDebounced = m.saveSettingsDebounced;
+    if (typeof m.renderExtensionTemplateAsync === 'function') renderExtensionTemplateAsync = m.renderExtensionTemplateAsync;
+}).catch(() => {});
 
 // Derive base URL from this module's location so template path is always correct
 const _BASE_URL = (() => {
@@ -291,6 +300,31 @@ function showStatus(msg, isError = false) {
 // ═══════════════════════════════════════════════════════════════════════════
 async function extensionInit() {
     initSettings();
+
+    // Inject settings panel into the Extensions tab
+    try {
+        if (typeof renderExtensionTemplateAsync === 'function') {
+            const html = await renderExtensionTemplateAsync(EXT_NAME, 'settings');
+            $('#extensions_settings').append(html);
+        } else {
+            // Fallback: inject a minimal button directly
+            $('#extensions_settings').append(`
+                <div class="forge-settings-block">
+                    <hr class="sysSettingsSeparator">
+                    <div style="padding:8px 0">
+                        <label><b>FORGE Character Creator</b></label>
+                        <div style="margin-top:6px">
+                            <button id="forge-settings-open-btn" class="menu_button">⚒ Open FORGE Creator</button>
+                        </div>
+                    </div>
+                </div>`);
+        }
+        // Bind the settings-panel button
+        $(document).on('click', '#forge-settings-open-btn', () => openPanel());
+    } catch (e) {
+        console.warn('[FORGE] Settings panel injection failed:', e);
+    }
+
     await createOverlay();
     injectForgeButton();
     hookSTEvents();
@@ -1865,8 +1899,7 @@ window.FORGE = FORGE;
 // ═══════════════════════════════════════════════════════════════════════════
 // ENTRY POINT
 // ═══════════════════════════════════════════════════════════════════════════
-// ST loads extensions after DOM ready; direct async call works in all ST versions
-(async () => { await extensionInit(); })();
+jQuery(async () => { await extensionInit(); });
 
 export {
     openPanel, closePanel,
