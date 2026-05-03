@@ -1509,41 +1509,58 @@ const DIALOGUE_TEMPLATES = {
 };
 
 // Scene-context dialogue — keyed by mood chip (lowercase)
+// Keyed by lowercase tension type (matches kwGet('tension') values lowercased)
 const SCENE_DIALOGUE_BY_MOOD = {
-    'tense':          [
-        { label:'standoff',            user:"What happens now?",                     char:"We find out." },
-        { label:'held breath',         user:"We could walk away.",                   char:"Could we?" },
-    ],
-    'dangerous':      [
-        { label:'threat acknowledged', user:"This is a bad idea.",                   char:"Agreed. We're doing it anyway." },
-        { label:'under pressure',      user:"How do we get out of this?",            char:"I'm working on it." },
-    ],
-    'erotically charged': [
+    'forbidden':    [
         { label:'proximity',           user:"You're very close.",                    char:"I know." },
         { label:'delay',               user:"We should stop.",                       char:"Probably." },
         { label:'want',                user:"What do you want?",                     char:"You already know." },
-    ],
-    'warmly intimate': [
-        { label:'ease',                user:"I don't want to leave yet.",            char:"Then don't." },
-        { label:'comfort',             user:"Is this alright?",                      char:"More than alright." },
-    ],
-    'charged':        [
         { label:'unspoken',            user:"Say something.",                        char:"I don't have the right words yet." },
-        { label:'tension',             user:"You're doing it again.",                char:"I know." },
     ],
-    'desperate':      [
+    'desperate':    [
         { label:'urgency',             user:"We don't have much time.",              char:"I know. Come here." },
         { label:'last chance',         user:"After this—",                           char:"Don't. Not yet." },
+        { label:'under pressure',      user:"How do we get out of this?",            char:"I'm working on it." },
     ],
-    'surreal':        [
+    'aftermath':    [
+        { label:'ease',                user:"I don't want to leave yet.",            char:"Then don't." },
+        { label:'unsaid',              user:"Are we going to talk about it?",        char:"Not yet." },
+        { label:'still here',          user:"You stayed.",                           char:"I stayed." },
+    ],
+    'ceremonial':   [
         { label:'dreamlike',           user:"Is this real?",                         char:"Does it matter?" },
+        { label:'ritual weight',       user:"What happens if we stop?",              char:"We don't stop." },
+        { label:'the cost',            user:"What does this cost us?",               char:"We'll find out on the other side." },
     ],
-    'dark':           [
-        { label:'foreboding',          user:"Something feels wrong.",               char:"Yes." },
-        { label:'inevitability',       user:"We shouldn't be here.",                char:"We're here." },
+    'liminal':      [
+        { label:'threshold',           user:"What are we doing?",                    char:"Something we won't be able to undo." },
+        { label:'held breath',         user:"We could walk away.",                   char:"Could we?" },
+        { label:'tension',             user:"You're doing it again.",                char:"I know." },
     ],
-    'unsettling':     [
-        { label:'wrongness',           user:"What is this place?",                  char:"Something that remembers us." },
+    'discovery':    [
+        { label:'caught',              user:"You knew.",                             char:"Yes." },
+        { label:'exposure',            user:"How long have you known?",              char:"Long enough." },
+        { label:'realisation',         user:"This changes everything.",              char:"It changes some things." },
+    ],
+    'standoff':     [
+        { label:'standoff',            user:"What happens now?",                     char:"We find out." },
+        { label:'threat acknowledged', user:"This is a bad idea.",                   char:"Agreed. We're doing it anyway." },
+        { label:'stalemate',           user:"Neither of us is going to back down.",  char:"No." },
+    ],
+    'pursuit':      [
+        { label:'caught',              user:"You followed me.",                      char:"I did." },
+        { label:'no escape',           user:"There's nowhere left to go.",           char:"I know." },
+        { label:'foreboding',          user:"Something feels wrong.",                char:"Yes." },
+    ],
+    'surrender':    [
+        { label:'return',              user:"You came back.",                        char:"I came back." },
+        { label:'given in',            user:"I wasn't supposed to want this.",       char:"Neither was I." },
+        { label:'comfort',             user:"Is this alright?",                      char:"More than alright." },
+    ],
+    'negotiation':  [
+        { label:'terms',               user:"What do you want from this?",           char:"Same thing you do. Probably." },
+        { label:'leverage',            user:"You have something I need.",            char:"I'm aware." },
+        { label:'deal',                user:"Name your price.",                      char:"I haven't decided yet." },
     ],
 };
 
@@ -1977,11 +1994,13 @@ function buildProse() {
         const kinks     = kwGet('kinks');     const likes      = kwGet('likes');
         const lim       = kwGet('limits').map(positivePhrase);
         const sexParts  = [...cleanList(sexrole),...cleanList(experience)].filter(Boolean);
+        const req = kwGet('requires');
         if (sexParts.length) lines.push(`${pronRef} is ${sexParts.join(', ')}.`);
         if (verbal.length)   lines.push(`Verbal: ${join(cleanList(verbal))}.`);
         if (triggers.length) lines.push(`Responds to: ${join(cleanList(triggers))}.`);
         if (kinks.length)    lines.push(`Kinks: ${join(cleanList(kinks))}.`);
         if (likes.length)    lines.push(`Likes: ${join(cleanList(likes))}.`);
+        if (req.length)      lines.push(`Requires: ${join(cleanList(req))}.`);
         if (lim.length)      lines.push(`Will not: ${lim.map(v => v.toLowerCase()).join(', ')}.`);
     }
 
@@ -2033,7 +2052,8 @@ function buildProse() {
         const verbal  = kwGet('verbal');  const triggers   = kwGet('triggers');
         const kinks   = kwGet('kinks');   const likes      = kwGet('likes');
         const lim     = kwGet('limits').map(positivePhrase);
-        const hasSex  = [sexrole,experience,verbal,triggers,kinks,likes,lim].some(a => a.length);
+        const reqSex  = kwGet('requires');
+        const hasSex  = [sexrole,experience,verbal,triggers,kinks,likes,lim,reqSex].some(a => a.length);
         if (hasSex) {
             lines.push(''); lines.push('Sexual disposition:');
             if (sexrole.length)   lines.push(`  Role: ${join(cleanList(sexrole))}.`);
@@ -2042,6 +2062,7 @@ function buildProse() {
             if (triggers.length)  lines.push(`  Triggers: ${join(cleanList(triggers))}.`);
             if (kinks.length)     lines.push(`  Kinks: ${join(cleanList(kinks))}.`);
             if (likes.length)     lines.push(`  Likes: ${join(cleanList(likes))}.`);
+            if (reqSex.length)    lines.push(`  Requires: ${join(cleanList(reqSex))}.`);
             if (lim.length)       lines.push(`  Limits: ${lim.map(v => v.toLowerCase()).join(', ')}.`);
         }
     }
@@ -2471,14 +2492,21 @@ function exportSTCard() {
     const tags = (g('forge-st-tags') || '').split(',').map(t => t.trim()).filter(Boolean);
 
     // ST chara_card_v2 format
+    // scenario = world/context framing (shown to AI, not displayed as opening)
+    // first_mes = character's opening message (shown to user as first turn)
+    const desc = buildDescription() || '';
+    const sceneTension = cleanList(kwGet('tension')).join(', ');
+    const sceneRel     = cleanList(kwGet('relationship')).join(', ');
+    const sceneParts   = [sceneTension, sceneRel, g('forge-scene-situation')].filter(Boolean);
+    const scenarioText = sceneParts.length ? sceneParts.join(' — ') : '';
     const card = {
         spec: 'chara_card_v2',
         spec_version: '2.0',
         data: {
             name,
-            description:              buildDescription()     || '',
+            description:              desc,
             personality:              buildPersonality()     || '',
-            scenario:                 buildFirstMessage()    || '',
+            scenario:                 scenarioText,
             first_mes:                buildFirstMessage()    || '',
             mes_example:              buildExampleDialogue() || '',
             creator_notes:            '',
@@ -2601,6 +2629,7 @@ function clearAll() {
     document.querySelectorAll('#forge-panel input[type="text"],#forge-panel input[type="number"],#forge-panel textarea').forEach(el => { el.value = ''; });
     Object.keys(KW_STATE).forEach(k => { KW_STATE[k] = []; kwRender(k); });
     ['forge-sl-ds','forge-sl-sb','forge-sl-cw','forge-sl-pc'].forEach(id => { const el = document.getElementById(id); if (el) { el.value = 5; slv(id); } });
+    document.querySelectorAll('.forge-preset-card.active').forEach(c => c.classList.remove('active'));
     _relationships = []; _loreEntries = []; _dialoguePairs = [];
     renderRelationships(); renderLore(); renderDialogue(); regen();
 }
