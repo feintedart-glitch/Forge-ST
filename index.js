@@ -1,6 +1,6 @@
 /**
  * FORGE Character Creator — SillyTavern Extension
- * Drop into: SillyTavern/public/scripts/extensions/third-party/forge-character-creator/
+ * Install into SillyTavern as third-party extension: feintedart-glitch/Forge-ST
  *
  * Commit 1 of 3: Extension registration, settings, UI injection, event hooks
  */
@@ -10,7 +10,7 @@ import { extension_settings, getContext, saveSettingsDebounced } from '../../../
 // Derive base URL from this module's location so template path is always correct
 const _BASE_URL = (() => {
     try { return new URL('.', import.meta.url).href; }
-    catch (_) { return `/scripts/extensions/third-party/forge-character-creator/`; }
+    catch (_) { return `/scripts/extensions/third-party/Forge-ST/`; }
 })();
 
 // ── Optional ST imports with graceful fallback ──────────────────────────────
@@ -47,7 +47,7 @@ try {
 // ═══════════════════════════════════════════════════════════════════════════
 // CONSTANTS
 // ═══════════════════════════════════════════════════════════════════════════
-const EXT_NAME    = 'forge-character-creator';
+const EXT_NAME    = 'Forge-ST';
 const EXT_VERSION = '1.0.0';
 
 const DEFAULT_SETTINGS = {

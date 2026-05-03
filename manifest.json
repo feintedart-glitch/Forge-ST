@@ -1,6 +1,6 @@
 {
   "display_name": "FORGE Character Creator",
-  "name": "forge-character-creator",
+  "name": "Forge-ST",
   "version": "1.0.0",
   "author": "FORGE",
   "description": "Deep character creator for SillyTavern with NSFW anatomy, fantasy features, W++/PList/Prose output, World Info integration, and full ST card write-back.",
