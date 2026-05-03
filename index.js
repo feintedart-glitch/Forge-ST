@@ -355,10 +355,24 @@ async function extensionInit() {
 // ═══════════════════════════════════════════════════════════════════════════
 
 const NAMES = [
+    // Core fantasy
     'Lyra','Cassia','Vael','Seraph','Maren','Drex','Isolde','Kira','Thessaly',
     'Aldric','Nyxara','Corin','Fen','Elowen','Sable','Darian','Astraea','Rook',
     'Vella','Cade','Lirien','Theron','Mira','Zephyr','Oryn','Selene','Tam',
     'Auren','Vesper','Nyx','Rhea','Castor','Lune','Arden','Soren',
+    // Unique fantasy coinages
+    'Vaëlith','Sorvaine','Thessarin','Mireth','Koravel','Eluwyn','Davryn','Sylvaine',
+    'Isavar','Caethon','Rhaeven','Nyssara','Tolvyr','Aelindra','Zevros','Calix',
+    // Arabic / Middle Eastern
+    'Zahra','Idris','Leila','Tariq','Samira','Farid','Yasmin','Rayan','Nadia','Karim',
+    // Japanese / East Asian
+    'Yuki','Haruki','Sora','Ren','Akira','Shiori','Kazuo','Nori','Aoi','Itsuki',
+    // Slavic
+    'Vaska','Zorja','Mirko','Darya','Radovan','Vesna','Bren','Lada','Slavko','Nadya',
+    // West African
+    'Amara','Kojo','Adaeze','Kwame','Fatou','Seun','Imani','Kofi','Zola','Nkechi',
+    // Latin / Iberian
+    'Isadora','Ciro','Valentina','Alaric','Solenne','Mateo','Silvana','Rémy','Luca','Celeste',
 ];
 
 const NPC_PRESETS = [
@@ -367,30 +381,69 @@ const NPC_PRESETS = [
 ];
 
 const HOOKS = [
+    // Tension / restraint
     "The door clicks shut. Neither of you moves.",
-    "You'd been warned about this one.",
-    "It starts the way these things always start — badly.",
-    "They look at you like they've been waiting.",
-    "The blood on your hands isn't entirely theirs.",
-    "You weren't supposed to find this room.",
-    "This was always going to happen.",
     "Three heartbeats of silence before something breaks.",
     "The word no dies somewhere between thought and voice.",
-    "They don't ask if you're sure. Neither do you.",
     "Something in the way they said your name.",
+    "The distance between you is a decision neither of you makes.",
+    "You've both been pretending not to notice for too long.",
+    // Danger / consequence
+    "You'd been warned about this one.",
+    "The blood on your hands isn't entirely theirs.",
+    "You weren't supposed to find this room.",
+    "Someone is watching. You're both pretending not to know.",
+    "There's a price on this and you're both aware of it.",
+    "You have until dawn. The rest is negotiable.",
+    // Inevitability
+    "It starts the way these things always start — badly.",
+    "This was always going to happen.",
+    "They don't ask if you're sure. Neither do you.",
     "You told yourself this would only happen once.",
+    "It was only a matter of when.",
+    "There's no version of this where you walk away clean.",
+    // Recognition / history
+    "They look at you like they've been waiting.",
+    "You've met before. They're pretending you haven't.",
+    "Old debts don't forgive and neither do they.",
+    "You know each other better than either of you should.",
+    "It's been long enough that both of you have changed. Not enough.",
+    // Charged / intimate
+    "You are the last two people left in this building.",
+    "The question they asked isn't the one they meant.",
+    "They move like they already know what you're going to say.",
+    "Neither of you came here by accident.",
+    "The room is smaller than it looked from the door.",
 ];
 
 const SCENE_PRESETS_DATA = [
-    { genre:'Fantasy',     name:'Dark Court',    location:'throne room',                        atmosphere:'midnight, torchlight',                         situation:'summons that cannot be refused',                    mood:'tense, dangerous',       hook:"The throne is occupied. You were not invited to sit." },
-    { genre:'Sci-Fi',      name:'Last Ship',     location:'deep space vessel',                  atmosphere:'emergency red lighting',                       situation:'two survivors, limited time',                       mood:'desperate, urgent',      hook:"The airlock seals. You run the math. You don't tell them the math." },
-    { genre:'Contemporary',name:'Late Night',    location:'empty bar after close',              atmosphere:'3am, city quiet',                              situation:'a deal, or what looks like one',                    mood:'erotically charged',     hook:'The last glass is poured. Neither of you leaves.' },
-    { genre:'Horror',      name:'The House',     location:'old house, rooms that shift',        atmosphere:'storm, power out',                             situation:'trapped inside',                                    mood:'dark, foreboding',       hook:"The lights go out at the moment you realize the door won't open." },
-    { genre:'Romance',     name:'Reunion',       location:'hotel room',                         atmosphere:'evening, golden lamplight, rain',               situation:'reunion years in the making',                       mood:'warmly intimate',        hook:"You'd rehearsed this. None of it comes out right." },
-    { genre:'Dungeon',     name:'The Cell',      location:'dungeon, stone and chain',           atmosphere:'indeterminate, timeless',                      situation:'prisoner and keeper',                               mood:'charged, dangerous',     hook:"The key turns. They didn't expect you to look at them like that." },
-    { genre:'Fantasy',     name:'Sacred Rite',   location:'forest clearing, standing stones',   atmosphere:'full moon, midsummer',                         situation:'ritual requiring both of you',                      mood:'surreal, dreamlike',     hook:"The stones hum. The ritual doesn't care about your feelings." },
-    { genre:'Sci-Fi',      name:'Synthetic',     location:'research lab, after hours',          atmosphere:'2am, facility empty',                          situation:'the AI has been learning something specific',       mood:'unsettling, intimate',   hook:'It says your name differently now.' },
-    { genre:'World',       name:"Khorvynn's Gate",location:"Khorvynn's Gate — the free city between worlds", atmosphere:'sea wind, foreign tongues, polite tension between enemies', situation:'travelers from rival kingdoms forced onto neutral ground', mood:'cosmopolitan, charged, danger beneath civility', hook:"Half the city wants something from the other half. You haven't decided which half you belong to." },
+    // ── Fantasy ────────────────────────────────────────────────────────────
+    { genre:'Fantasy',     name:'Dark Court',        location:'throne room',                        atmosphere:'midnight, torchlight',                                situation:'summons that cannot be refused',                            mood:'tense, dangerous',            hook:"The throne is occupied. You were not invited to sit." },
+    { genre:'Fantasy',     name:'Sacred Rite',        location:'forest clearing, standing stones',   atmosphere:'full moon, midsummer',                                situation:'ritual requiring both of you',                              mood:'surreal, dreamlike',          hook:"The stones hum. The ritual doesn't care about your feelings." },
+    { genre:'Fantasy',     name:'The War Camp',       location:'command tent at the edge of battle', atmosphere:'smoke, torchlight, the morning before a siege',       situation:'two opposing commanders, ceasefire that expires at dawn',   mood:'urgent, charged, honorable',  hook:"You agreed to talk. You didn't agree to this." },
+    { genre:'Fantasy',     name:'The Sunken Archive', location:'flooded library beneath the city',   atmosphere:'candlelight on black water, absolute silence',        situation:'one of you knows what the other is looking for',           mood:'eerie, intimate, conspiring',  hook:"Whatever you came here to find, you found something else first." },
+    { genre:'Fantasy',     name:'Merchant Road',      location:'roadside inn, shared room — one bed', atmosphere:'cold rain outside, firelight inside',                situation:'strangers forced to share by weather and coin',             mood:'guarded, slowly thawing',     hook:"Neither of you mentions the bed. Yet." },
+    // ── Sci-Fi ─────────────────────────────────────────────────────────────
+    { genre:'Sci-Fi',      name:'Last Ship',           location:'deep space vessel',                  atmosphere:'emergency red lighting',                              situation:'two survivors, limited time',                               mood:'desperate, urgent',           hook:"The airlock seals. You run the math. You don't tell them the math." },
+    { genre:'Sci-Fi',      name:'Synthetic',           location:'research lab, after hours',           atmosphere:'2am, facility empty',                                 situation:'the AI has been learning something specific',               mood:'unsettling, intimate',        hook:'It says your name differently now.' },
+    { genre:'Sci-Fi',      name:'Colony Drop',         location:'orbital station, depressurizing',    atmosphere:'alarms cycling off, artificial calm',                 situation:'evacuation failed — one pod left, two people',             mood:'desperate, clarifying',       hook:"You both know what this is. Only one of you says it." },
+    { genre:'Sci-Fi',      name:'Black Site',          location:'off-books detention facility',        atmosphere:'fluorescent, sterile, no windows',                    situation:'interrogator and subject — subject knows something useful', mood:'controlled, predatory, tense', hook:"They've been in this room before. So have you. Not together." },
+    // ── Contemporary ───────────────────────────────────────────────────────
+    { genre:'Contemporary',name:'Late Night',          location:'empty bar after close',               atmosphere:'3am, city quiet',                                     situation:'a deal, or what looks like one',                            mood:'erotically charged',          hook:'The last glass is poured. Neither of you leaves.' },
+    { genre:'Contemporary',name:'The Deposition',      location:'glass-walled conference room, 11pm',  atmosphere:'city lights below, papers everywhere',                situation:'opposing counsel, case settles in the morning',             mood:'antagonistic, exhausted, charged', hook:"You've spent six months hating each other. Tonight is different." },
+    { genre:'Contemporary',name:'After the Show',      location:'backstage, empty venue',              atmosphere:'post-performance adrenaline, sweat, dim work lights',  situation:'reunion with someone who left before things were finished',  mood:'raw, unresolved, electric',   hook:"The crowd is gone. There's no performance left to hide behind." },
+    // ── Horror ─────────────────────────────────────────────────────────────
+    { genre:'Horror',      name:'The House',           location:'old house, rooms that shift',         atmosphere:'storm, power out',                                    situation:'trapped inside',                                            mood:'dark, foreboding',            hook:"The lights go out at the moment you realize the door won't open." },
+    { genre:'Horror',      name:'The Offering',        location:'ruined temple, deep forest',          atmosphere:'no moon, something watching from the treeline',       situation:'summoning that went correctly — that is the problem',       mood:'dread, fascinated horror',    hook:"It answered. You weren't prepared for it to answer." },
+    // ── Romance ────────────────────────────────────────────────────────────
+    { genre:'Romance',     name:'Reunion',             location:'hotel room',                          atmosphere:'evening, golden lamplight, rain',                      situation:'reunion years in the making',                               mood:'warmly intimate',             hook:"You'd rehearsed this. None of it comes out right." },
+    { genre:'Romance',     name:'The Long Flight',     location:'overnight train, private compartment', atmosphere:'countryside dark outside, soft cabin light',          situation:'strangers with too much in common to be strangers for long', mood:'intimate, slow-building',     hook:"You have eight hours and nowhere to be. So do they." },
+    // ── Dungeon / Power ────────────────────────────────────────────────────
+    { genre:'Dungeon',     name:'The Cell',            location:'dungeon, stone and chain',            atmosphere:'indeterminate, timeless',                             situation:'prisoner and keeper',                                       mood:'charged, dangerous',          hook:"The key turns. They didn't expect you to look at them like that." },
+    { genre:'Dungeon',     name:'Auction House',       location:'private auction, curtained alcove',   atmosphere:'candlelight, whispered bids, old money',              situation:'one of you is being sold — the other is buying for reasons', mood:'transactional, loaded, tense', hook:"The price was settled. Everything after this is negotiation." },
+    // ── World / Political ──────────────────────────────────────────────────
+    { genre:'World',       name:"Khorvynn's Gate",     location:"Khorvynn's Gate — the free city between worlds", atmosphere:'sea wind, foreign tongues, polite tension between enemies', situation:'travelers from rival kingdoms forced onto neutral ground', mood:'cosmopolitan, charged, danger beneath civility', hook:"Half the city wants something from the other half. You haven't decided which half you belong to." },
+    { genre:'World',       name:'The Treaty Table',    location:'neutral ground — a border fortress',  atmosphere:'candles burning low, wine untouched, advisors outside', situation:'enemy leaders negotiating — alone, at last',               mood:'politically charged, personally loaded', hook:"The treaty is almost done. That's not why you're still in the room." },
 ];
 
 const SCENE_MODES = [
@@ -527,6 +580,7 @@ const REL_ROLES = [
 const REL_NAMES = [
     'Lyra','Vael','Seraph','Maren','Cassia','Isolde','Drex','Kira',
     'Aldric','Fen','Elowen','Sable','Rook','Thessaly','Corin',
+    'Zahra','Ren','Vesna','Amara','Ciro','Vaëlith','Sorvaine','Mireth','Koravel',
 ];
 
 // ── Positive-rephrase map (limits language → neutral/affirmative) ──────────
@@ -2147,16 +2201,41 @@ function buildFirstMessage() {
         };
         sentences.push(hooksByMode[_sceneMode] || hooksByMode.romance);
     } else {
-        // Fall back to a mode-appropriate generic hook
+        // Fall back to a mode-appropriate generic hook — pick one at random per mode
         const genericHooks = {
-            literary:  'Neither of you moves first.',
-            erotic:    'The distance between you is a decision.',
-            pulp:      'It starts now.',
-            horror:    'You notice it too late.',
-            romance:   "You weren't expecting this.",
-            adventure: 'Time to move.',
+            literary:  [
+                'Neither of you moves first.',
+                'The silence does the work you won't.',
+                'Whatever you were going to say, you don't.',
+            ],
+            erotic:    [
+                'The distance between you is a decision.',
+                'You are very aware of how close they are.',
+                'There is a moment — and then it passes — and then it doesn't.',
+            ],
+            pulp:      [
+                'It starts now.',
+                'No more waiting.',
+                'Someone always has to go first.',
+            ],
+            horror:    [
+                'You notice it too late.',
+                'Something is already here.',
+                'The wrong detail arrives, and you understand.',
+            ],
+            romance:   [
+                "You weren't expecting this.",
+                'Something shifts. Small. Irreversible.',
+                'You almost say it. Almost.',
+            ],
+            adventure: [
+                'Time to move.',
+                'The horizon is the only answer.',
+                'Whatever comes next, you face it forward.',
+            ],
         };
-        sentences.push(genericHooks[_sceneMode] || genericHooks.romance);
+        const pool = genericHooks[_sceneMode] || genericHooks.romance;
+        sentences.push(pool[Math.floor(Math.random() * pool.length)]);
     }
 
     // Add NPC / player context as a trailing note if set
