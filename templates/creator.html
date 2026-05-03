@@ -203,17 +203,42 @@
         </div>
         <div class="forge-section-body">
 
+          <!-- Scene Archetype Picker -->
           <div class="forge-subsection">
-            <div class="forge-sub-label">Scene Presets</div>
-            <div class="forge-preset-grid" id="forge-scene-presets"></div>
+            <div class="forge-sub-label">Scene Archetype <span style="color:var(--forge-text3);font-size:9px;">(optional, fills fields below)</span></div>
+            <div class="forge-preset-grid" id="forge-scene-archetypes"></div>
           </div>
 
+          <!-- Scene Brief -->
           <div class="forge-subsection">
-            <div class="forge-sub-label">Scene Builder</div>
-            <div id="fw-location"></div>
-            <div id="fw-atmosphere"></div>
-            <div id="fw-situation"></div>
-            <div id="fw-mood"></div>
+            <div class="forge-sub-label">Scene Brief</div>
+
+            <!-- Tension & Relationship Chips -->
+            <div id="fw-tension"></div>
+            <div id="fw-relationship"></div>
+
+            <!-- Write-in Fields -->
+            <div class="forge-field">
+              <div class="forge-field-label">Setting <span style="color:var(--forge-text3);font-size:9px;">where, what it looks like, atmosphere</span></div>
+              <input type="text" id="forge-scene-setting" placeholder="e.g., flooded library beneath the city, midnight rooftop, war camp at dawn…" oninput="FORGE.regen()">
+            </div>
+
+            <div class="forge-field">
+              <div class="forge-field-label">Situation <span style="color:var(--forge-text3);font-size:9px;">what brought them here, the circumstance</span></div>
+              <input type="text" id="forge-scene-situation" placeholder="e.g., a ritual that can't be stopped midway, ceasefire expires at dawn, one of them knows a secret…" oninput="FORGE.regen()">
+            </div>
+
+            <div class="forge-field">
+              <div class="forge-field-label">Opening Beat <span style="color:var(--forge-text3);font-size:9px;">what the character is doing when this starts</span></div>
+              <input type="text" id="forge-scene-opening-beat" placeholder="e.g., standing at the window with their back turned, counting coins, already waiting…" oninput="FORGE.regen()">
+            </div>
+
+            <div class="forge-field">
+              <div class="forge-field-label">Stakes <span style="color:var(--forge-text3);font-size:9px;">what's at risk, what matters</span></div>
+              <input type="text" id="forge-scene-stakes" placeholder="e.g., their reputation, the secret, being caught, never seeing them again…" oninput="FORGE.regen()">
+            </div>
+
+            <!-- NPC & Player Context -->
             <div class="forge-field-row">
               <div class="forge-field">
                 <div class="forge-field-label">NPCs Present <button class="forge-dice-btn" onclick="FORGE.rfld('forge-scene-npcs', FORGE.NPC_PRESETS)">⚄</button></div>
@@ -224,17 +249,11 @@
                 <input type="text" id="forge-scene-player" placeholder="Who is the player/reader?" oninput="FORGE.regen()">
               </div>
             </div>
-            <div class="forge-field-row forge-field-row-single">
-              <div class="forge-field">
-                <div class="forge-field-label">Opening Hook <button class="forge-dice-btn" onclick="FORGE.rfld('forge-scene-hook', FORGE.HOOKS)">⚄</button></div>
-                <input type="text" id="forge-scene-hook" placeholder="First line or hook…" oninput="FORGE.regen()">
-              </div>
-            </div>
-            <div class="forge-field-row forge-field-row-single">
-              <div class="forge-field">
-                <div class="forge-field-label">Full Write-in <span style="color:var(--forge-text3);font-size:9px;">(overrides builder)</span></div>
-                <textarea id="forge-scene-full" placeholder="Complete opening scene, or leave blank to use builder…" style="min-height:90px;" oninput="FORGE.regen()"></textarea>
-              </div>
+
+            <!-- Full Override -->
+            <div class="forge-field">
+              <div class="forge-field-label">Full Write-in <span style="color:var(--forge-text3);font-size:9px;">(overrides everything above)</span></div>
+              <textarea id="forge-scene-full" placeholder="Complete opening scene, or leave blank to use the brief above…" style="min-height:90px;" oninput="FORGE.regen()"></textarea>
             </div>
           </div>
 
@@ -248,7 +267,7 @@
             <div style="display:flex;gap:7px;margin-top:8px;flex-wrap:wrap;">
               <button class="forge-btn forge-btn-ghost" onclick="FORGE.addDialoguePair()">+ Add</button>
               <button class="forge-btn forge-btn-ghost" onclick="FORGE.generatePersonalityDialogue()" title="Generate from personality chips + scene mode">⚡ Personality</button>
-              <button class="forge-btn forge-btn-ghost" onclick="FORGE.generateSceneDialogue()" title="Generate from scene mood + situation chips">⚡ Scene</button>
+              <button class="forge-btn forge-btn-ghost" onclick="FORGE.generateSceneDialogue()" title="Generate from tension + relationship">⚡ Scene</button>
               <button class="forge-dice-btn" style="padding:5px 10px;" onclick="FORGE.randomizeDialogue()">⚄</button>
             </div>
           </div>

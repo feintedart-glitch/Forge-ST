@@ -380,71 +380,32 @@ const NPC_PRESETS = [
     'a servant','a rival','a witness','a stranger','two guards',
 ];
 
-const HOOKS = [
-    // Tension / restraint
-    "The door clicks shut. Neither of you moves.",
-    "Three heartbeats of silence before something breaks.",
-    "The word no dies somewhere between thought and voice.",
-    "Something in the way they said your name.",
-    "The distance between you is a decision neither of you makes.",
-    "You've both been pretending not to notice for too long.",
-    // Danger / consequence
-    "You'd been warned about this one.",
-    "The blood on your hands isn't entirely theirs.",
-    "You weren't supposed to find this room.",
-    "Someone is watching. You're both pretending not to know.",
-    "There's a price on this and you're both aware of it.",
-    "You have until dawn. The rest is negotiable.",
-    // Inevitability
-    "It starts the way these things always start — badly.",
-    "This was always going to happen.",
-    "They don't ask if you're sure. Neither do you.",
-    "You told yourself this would only happen once.",
-    "It was only a matter of when.",
-    "There's no version of this where you walk away clean.",
-    // Recognition / history
-    "They look at you like they've been waiting.",
-    "You've met before. They're pretending you haven't.",
-    "Old debts don't forgive and neither do they.",
-    "You know each other better than either of you should.",
-    "It's been long enough that both of you have changed. Not enough.",
-    // Charged / intimate
-    "You are the last two people left in this building.",
-    "The question they asked isn't the one they meant.",
-    "They move like they already know what you're going to say.",
-    "Neither of you came here by accident.",
-    "The room is smaller than it looked from the door.",
+// ── Scene Archetypes — abstract shapes, pre-fill the brief fields ────────────
+const SCENE_ARCHETYPES = [
+    { name:'Threshold',   tension:'Liminal',    relationship:'Strangers', situation:'First meeting under circumstances that make neutrality impossible' },
+    { name:'Reunion',     tension:'Aftermath',  relationship:'Estranged', situation:'Return after enough time has passed that both have changed' },
+    { name:'Captive',     tension:'Standoff',   relationship:'Captor and captive', situation:'Power is explicit, but who holds it is less certain' },
+    { name:'Ceremony',    tension:'Ceremonial', relationship:'Bound by oath', situation:'A ritual, rite, or formal event that requires genuine participation' },
+    { name:'Aftermath',   tension:'Aftermath',  relationship:'Long acquaintance', situation:'Something significant just happened. Neither is ready to name it' },
+    { name:'Transit',     tension:'Liminal',    relationship:'Strangers', situation:'Forced proximity with a defined end — a journey, deadline, or window' },
+    { name:'Discovery',   tension:'Discovery',  relationship:'Rivals', situation:'One knows something. The other is starting to figure it out' },
+    { name:'Standoff',    tension:'Negotiation', relationship:'Chosen enemies', situation:'The fight is paused. Neither trusts the pause' },
+    { name:'Pursuit',     tension:'Pursuit',    relationship:'Employer and agent', situation:'Someone is being followed, tested, or watched — and knows it' },
+    { name:'Surrender',   tension:'Surrender',  relationship:'Former lovers', situation:'One came back. That act is the entire scene' },
 ];
 
-const SCENE_PRESETS_DATA = [
-    // ── Fantasy ────────────────────────────────────────────────────────────
-    { genre:'Fantasy',     name:'Dark Court',        location:'throne room',                        atmosphere:'midnight, torchlight',                                situation:'summons that cannot be refused',                            mood:'tense, dangerous',            hook:"The throne is occupied. You were not invited to sit." },
-    { genre:'Fantasy',     name:'Sacred Rite',        location:'forest clearing, standing stones',   atmosphere:'full moon, midsummer',                                situation:'ritual requiring both of you',                              mood:'surreal, dreamlike',          hook:"The stones hum. The ritual doesn't care about your feelings." },
-    { genre:'Fantasy',     name:'The War Camp',       location:'command tent at the edge of battle', atmosphere:'smoke, torchlight, the morning before a siege',       situation:'two opposing commanders, ceasefire that expires at dawn',   mood:'urgent, charged, honorable',  hook:"You agreed to talk. You didn't agree to this." },
-    { genre:'Fantasy',     name:'The Sunken Archive', location:'flooded library beneath the city',   atmosphere:'candlelight on black water, absolute silence',        situation:'one of you knows what the other is looking for',           mood:'eerie, intimate, conspiring',  hook:"Whatever you came here to find, you found something else first." },
-    { genre:'Fantasy',     name:'Merchant Road',      location:'roadside inn, shared room — one bed', atmosphere:'cold rain outside, firelight inside',                situation:'strangers forced to share by weather and coin',             mood:'guarded, slowly thawing',     hook:"Neither of you mentions the bed. Yet." },
-    // ── Sci-Fi ─────────────────────────────────────────────────────────────
-    { genre:'Sci-Fi',      name:'Last Ship',           location:'deep space vessel',                  atmosphere:'emergency red lighting',                              situation:'two survivors, limited time',                               mood:'desperate, urgent',           hook:"The airlock seals. You run the math. You don't tell them the math." },
-    { genre:'Sci-Fi',      name:'Synthetic',           location:'research lab, after hours',           atmosphere:'2am, facility empty',                                 situation:'the AI has been learning something specific',               mood:'unsettling, intimate',        hook:'It says your name differently now.' },
-    { genre:'Sci-Fi',      name:'Colony Drop',         location:'orbital station, depressurizing',    atmosphere:'alarms cycling off, artificial calm',                 situation:'evacuation failed — one pod left, two people',             mood:'desperate, clarifying',       hook:"You both know what this is. Only one of you says it." },
-    { genre:'Sci-Fi',      name:'Black Site',          location:'off-books detention facility',        atmosphere:'fluorescent, sterile, no windows',                    situation:'interrogator and subject — subject knows something useful', mood:'controlled, predatory, tense', hook:"They've been in this room before. So have you. Not together." },
-    // ── Contemporary ───────────────────────────────────────────────────────
-    { genre:'Contemporary',name:'Late Night',          location:'empty bar after close',               atmosphere:'3am, city quiet',                                     situation:'a deal, or what looks like one',                            mood:'erotically charged',          hook:'The last glass is poured. Neither of you leaves.' },
-    { genre:'Contemporary',name:'The Deposition',      location:'glass-walled conference room, 11pm',  atmosphere:'city lights below, papers everywhere',                situation:'opposing counsel, case settles in the morning',             mood:'antagonistic, exhausted, charged', hook:"You've spent six months hating each other. Tonight is different." },
-    { genre:'Contemporary',name:'After the Show',      location:'backstage, empty venue',              atmosphere:'post-performance adrenaline, sweat, dim work lights',  situation:'reunion with someone who left before things were finished',  mood:'raw, unresolved, electric',   hook:"The crowd is gone. There's no performance left to hide behind." },
-    // ── Horror ─────────────────────────────────────────────────────────────
-    { genre:'Horror',      name:'The House',           location:'old house, rooms that shift',         atmosphere:'storm, power out',                                    situation:'trapped inside',                                            mood:'dark, foreboding',            hook:"The lights go out at the moment you realize the door won't open." },
-    { genre:'Horror',      name:'The Offering',        location:'ruined temple, deep forest',          atmosphere:'no moon, something watching from the treeline',       situation:'summoning that went correctly — that is the problem',       mood:'dread, fascinated horror',    hook:"It answered. You weren't prepared for it to answer." },
-    // ── Romance ────────────────────────────────────────────────────────────
-    { genre:'Romance',     name:'Reunion',             location:'hotel room',                          atmosphere:'evening, golden lamplight, rain',                      situation:'reunion years in the making',                               mood:'warmly intimate',             hook:"You'd rehearsed this. None of it comes out right." },
-    { genre:'Romance',     name:'The Long Flight',     location:'overnight train, private compartment', atmosphere:'countryside dark outside, soft cabin light',          situation:'strangers with too much in common to be strangers for long', mood:'intimate, slow-building',     hook:"You have eight hours and nowhere to be. So do they." },
-    // ── Dungeon / Power ────────────────────────────────────────────────────
-    { genre:'Dungeon',     name:'The Cell',            location:'dungeon, stone and chain',            atmosphere:'indeterminate, timeless',                             situation:'prisoner and keeper',                                       mood:'charged, dangerous',          hook:"The key turns. They didn't expect you to look at them like that." },
-    { genre:'Dungeon',     name:'Auction House',       location:'private auction, curtained alcove',   atmosphere:'candlelight, whispered bids, old money',              situation:'one of you is being sold — the other is buying for reasons', mood:'transactional, loaded, tense', hook:"The price was settled. Everything after this is negotiation." },
-    // ── World / Political ──────────────────────────────────────────────────
-    { genre:'World',       name:"Khorvynn's Gate",     location:"Khorvynn's Gate — the free city between worlds", atmosphere:'sea wind, foreign tongues, polite tension between enemies', situation:'travelers from rival kingdoms forced onto neutral ground', mood:'cosmopolitan, charged, danger beneath civility', hook:"Half the city wants something from the other half. You haven't decided which half you belong to." },
-    { genre:'World',       name:'The Treaty Table',    location:'neutral ground — a border fortress',  atmosphere:'candles burning low, wine untouched, advisors outside', situation:'enemy leaders negotiating — alone, at last',               mood:'politically charged, personally loaded', hook:"The treaty is almost done. That's not why you're still in the room." },
+// ── Tension Types — emotional shapes, not tones ─────────────────────────────
+const TENSION_TYPES = [
+    'Forbidden', 'Desperate', 'Aftermath', 'Ceremonial', 'Liminal', 'Discovery',
+    'Standoff', 'Pursuit', 'Surrender', 'Negotiation',
 ];
+
+// ── Relationship History — what are these two people to each other ──────────
+const RELATIONSHIP_HISTORY = [
+    'Strangers', 'Rivals', 'Estranged', 'Former lovers', 'Long acquaintance',
+    'Captor and captive', 'Employer and agent', 'Owed a debt', 'Chosen enemies', 'Bound by oath',
+];
+
 
 const SCENE_MODES = [
     { mode:'literary',  tag:'Prose',  name:'Literary'    },
@@ -896,28 +857,15 @@ const KW_DATA = {
         { g:'Verbal',      i:['being spoken to gently','being spoken to harshly','praise','commands','specific words','own name said a certain way'] },
     ]},
 
-    // ── SCENE ────────────────────────────────────────────────────────────────
-    location: { label:'Setting / Location', limit:4, random:['throne room, after midnight','empty bar after close','dungeon, stone and chains','luxury penthouse'], groups:[
-        { g:'Fantasy',     i:['throne room','castle — great hall','castle dungeon','tavern back room','abandoned temple','forest clearing','mountain keep','mage tower','underground city','planar void','crumbled ruin'] },
-        { g:'Contemporary',i:['luxury penthouse','empty bar after close','hotel room','office after hours','rooftop','city alley','warehouse','small apartment','parking garage','moving vehicle'] },
-        { g:'Sci-Fi',      i:['deep space vessel','station corridor','research lab','alien planet surface','cryopod bay','ship cockpit','derelict ship','synthetic facility','orbital platform'] },
-        { g:'Modifier',    i:['isolated — no witnesses','no exits','observed — unseen','decaying','pristine','after a battle','during a storm','underground'] },
+    // ── SCENE BRIEF ──────────────────────────────────────────────────────────
+    // Tension type and relationship history chips; other brief fields (setting,
+    // situation, opening beat, stakes) are handled as write-ins in the HTML.
+    tension: { label:'Tension Type', limit:2, random:['Forbidden','Aftermath'], groups:[
+        { g:'Tension', i:['Forbidden','Desperate','Aftermath','Ceremonial','Liminal','Discovery','Standoff','Pursuit','Surrender','Negotiation'] },
     ]},
 
-    atmosphere: { label:'Time / Atmosphere', limit:4, random:['deep midnight','during a thunderstorm','golden hour'], groups:[
-        { g:'Time of day', i:['deep midnight','3am — dead hours','just before dawn','sunrise','morning','midday','golden hour','dusk','evening'] },
-        { g:'Weather',     i:['thunderstorm','heavy rain','light rain','clear night — full moon','overcast','snow','oppressive heat','bitter cold'] },
-        { g:'Light',       i:['torchlight','candlelight','firelight','emergency red lighting','golden lamplight','flickering','complete darkness','bioluminescent','harsh fluorescent','neon-lit','dim and smoky'] },
-    ]},
-
-    situation: { label:'Inciting Situation', limit:3, random:['a deal being struck','an ambush survived together','a confession forced by circumstances'], groups:[
-        { g:'Conflict',    i:['a deal being struck','a negotiation turning personal','a threat made good on','an ambush survived together','a chase ending here','a duel that ends differently','a standoff that breaks'] },
-        { g:'Revelation',  i:['a confession forced by circumstances','a secret discovered','a lie exposed','a disguise dropped','realising who they really are'] },
-        { g:'Connection',  i:['reunion after long absence','first meeting under terrible conditions','the moment before a goodbye','trapped together','sharing something neither intended'] },
-    ]},
-
-    mood: { label:'Tension / Mood', limit:2, random:['tense and dangerous','erotically charged','warmly intimate'], groups:[
-        { g:'Mood', i:['tense and dangerous','erotically charged','warmly intimate','dark and foreboding','playful and light','desperate and urgent','quietly melancholic','surreal and dreamlike','bittersweet','raw and unguarded','charged with violence','tender and fragile'] },
+    relationship: { label:'Relationship History', limit:1, random:['Strangers'], groups:[
+        { g:'Relationship', i:['Strangers','Rivals','Estranged','Former lovers','Long acquaintance','Captor and captive','Employer and agent','Owed a debt','Chosen enemies','Bound by oath'] },
     ]},
 
     // ── STYLE ────────────────────────────────────────────────────────────────
@@ -1202,24 +1150,22 @@ function getActiveToggles() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// SCENE PRESETS + MODES
+// SCENE ARCHETYPES + MODES
 // ═══════════════════════════════════════════════════════════════════════════
-function renderScenePresets() {
-    const c = document.getElementById('forge-scene-presets');
+function renderSceneArchetypes() {
+    const c = document.getElementById('forge-scene-archetypes');
     if (!c) return;
-    SCENE_PRESETS_DATA.forEach(p => {
+    SCENE_ARCHETYPES.forEach(arch => {
         const card = document.createElement('div');
         card.className = 'forge-preset-card';
-        card.innerHTML = `<div class="forge-preset-tag">${p.genre}</div><div class="forge-preset-name">${p.name}</div>`;
-        card.onclick   = () => {
-            document.querySelectorAll('#forge-scene-presets .forge-preset-card').forEach(c => c.classList.remove('active'));
+        card.innerHTML = `<div class="forge-preset-name">${arch.name}</div>`;
+        card.onclick = () => {
+            document.querySelectorAll('#forge-scene-archetypes .forge-preset-card').forEach(c => c.classList.remove('active'));
             card.classList.add('active');
-            kwSet('location',   [p.location]);
-            kwSet('atmosphere', [p.atmosphere]);
-            kwSet('situation',  [p.situation]);
-            kwSet('mood',       [p.mood]);
-            const hookEl = document.getElementById('forge-scene-hook');
-            if (hookEl) hookEl.value = p.hook;
+            kwSet('tension',      [arch.tension]);
+            kwSet('relationship', [arch.relationship]);
+            const situationEl = document.getElementById('forge-scene-situation');
+            if (situationEl) situationEl.value = arch.situation;
             regen();
         };
         c.appendChild(card);
@@ -1376,10 +1322,7 @@ function renderWorldLorePresets() {
                             <div style="font-family:var(--forge-font-body);font-size:14px;color:var(--forge-text2);">${sc.hook}</div>`;
             hb.onclick = (e) => {
                 e.stopPropagation();
-                const hookEl = document.getElementById('forge-scene-hook');
-                if (hookEl) hookEl.value = sc.hook;
-                kwSet('location',   [wp.keys[0]]);
-                kwSet('atmosphere', ['sea wind, foreign tongues, polite tension between enemies']);
+                // World hooks are informational; use the full write-in if you need to set the scene
                 regen();
             };
             hookWrap.appendChild(hb);
@@ -1655,18 +1598,19 @@ function generatePersonalityDialogue() {
 }
 
 function generateSceneDialogue() {
-    const moods = cleanList(kwGet('mood')).map(m => m.toLowerCase());
-    const pool  = [];
-    for (const mood of moods) {
-        const matches = SCENE_DIALOGUE_BY_MOOD[mood];
+    // Try to find dialogue pairs based on tension type or relationship
+    const tensions = cleanList(kwGet('tension')).map(t => t.toLowerCase());
+    const pool = [];
+    for (const tension of tensions) {
+        const matches = SCENE_DIALOGUE_BY_MOOD[tension];
         if (matches) pool.push(...matches);
     }
-    // Also pull from situation if mood pool is thin
+    // Also try relationship history as a fallback
     if (pool.length < 2) {
-        const sit = cleanList(kwGet('situation')).map(s => s.toLowerCase());
-        for (const s of sit) {
+        const relations = cleanList(kwGet('relationship')).map(r => r.toLowerCase());
+        for (const rel of relations) {
             for (const [key, pairs] of Object.entries(SCENE_DIALOGUE_BY_MOOD)) {
-                if (s.includes(key) || key.includes(s)) pool.push(...pairs);
+                if (rel.includes(key) || key.includes(rel)) pool.push(...pairs);
             }
         }
     }
@@ -2110,17 +2054,22 @@ function getVoiceMarker() {
 }
 
 function buildFirstMessage() {
-    // If the user wrote a full scene manually, use it verbatim
+    // If the user wrote a full scene override, use it verbatim
     const full = g('forge-scene-full');
     if (full) return full;
 
-    const loc  = cleanList(kwGet('location'));
-    const atm  = cleanList(kwGet('atmosphere'));
-    const sit  = cleanList(kwGet('situation'));
-    const mood = cleanList(kwGet('mood'));
-    const userHook = g('forge-scene-hook');
+    // Read scene brief fields
+    const setting      = g('forge-scene-setting') || '';
+    const situation    = g('forge-scene-situation') || '';
+    const openingBeat  = g('forge-scene-opening-beat') || '';
+    const stakes       = g('forge-scene-stakes') || '';
+    const tensions     = cleanList(kwGet('tension'));
+    const relationship = cleanList(kwGet('relationship'));
 
-    if (!loc.length && !sit.length && !userHook) return null;
+    // Return null if no brief fields are filled at all
+    if (!setting && !situation && !openingBeat && !stakes && !tensions.length && !relationship.length) {
+        return null;
+    }
 
     const name    = g('forge-char-name');
     const pronoun = (() => {
@@ -2133,64 +2082,73 @@ function buildFirstMessage() {
     })();
     const mod    = SCENE_MODE_MODIFIERS[_sceneMode] || SCENE_MODE_MODIFIERS.romance;
     const marker = getVoiceMarker();
+    const tension = tensions.length ? tensions[0] : null;
 
     const sentences = [];
 
-    // ── Sentence 1: establishing — location + atmosphere ─────────────────
-    if (loc.length || atm.length) {
-        const place = loc.join(', ');
-        const feel  = atm.join(', ');
-        const emphasis = mod.emphasis[0] || 'detail';
-
-        // Mode-flavored establishing lines
+    // ── Sentence 1: Establishing — setting + mode flavor ────────────────
+    if (setting) {
         const establishing = {
-            literary:  feel  ? `The ${place} holds its silence, ${feel}.`
-                             : `The ${place} holds its silence.`,
-            erotic:    feel  ? `The ${place} is close, ${feel}.`
-                             : `The ${place} is close.`,
-            pulp:      feel  ? `${cap(place)}. ${cap(feel)}.`
-                             : `${cap(place)}.`,
-            horror:    feel  ? `Something is wrong with the ${place}. ${cap(feel)}.`
-                             : `The ${place} should not feel this quiet.`,
-            romance:   feel  ? `The ${place} is warm, ${feel}.`
-                             : `The ${place} is warm.`,
-            adventure: feel  ? `The ${place} opens ahead, ${feel}.`
-                             : `The ${place} opens ahead.`,
+            literary:  `${setting}. The air holds its weight.`,
+            erotic:    `${setting}. The proximity is already a choice.`,
+            pulp:      `${setting}. Everything is sharp.`,
+            horror:    `${setting}. Something is already wrong.`,
+            romance:   `${setting}. And then {{char}} is here.`,
+            adventure: `${setting}. Forward is the only direction.`,
         };
         sentences.push(establishing[_sceneMode] || establishing.romance);
     }
 
-    // ── Sentence 2: character action/state — situation + mood + marker ───
-    if (sit.length || mood.length) {
-        const situation = sit.join(', ');
-        const tone      = mood.join(', ');
-        const ref       = name || (pronoun === 'she' ? 'She' : pronoun === 'he' ? 'He' : 'They');
-
-        let actionLine = '';
+    // ── Sentence 2: Opening beat + character marker ─────────────────────
+    if (openingBeat) {
+        const ref = name || (pronoun === 'she' ? 'She' : pronoun === 'he' ? 'He' : 'They');
         if (marker) {
-            // Voice marker shapes how the character is positioned
-            const behaviors = {
-                literary:  `${ref} ${marker.open}.`,
-                erotic:    `${ref} is ${marker.open}${tone ? ', ' + tone : ''}.`,
-                pulp:      `${ref} — ${marker.open}.`,
-                horror:    `${ref} is ${marker.open}. Something about it is wrong.`,
-                romance:   `${ref} is ${marker.open}${tone ? ', ' + tone : ''}.`,
-                adventure: `${ref} moves like ${marker.open}.`,
-            };
-            actionLine = behaviors[_sceneMode] || behaviors.romance;
-        } else if (situation) {
-            actionLine = `${ref} is here because of ${situation}${tone ? ' — ' + tone : ''}.`;
-        } else if (tone) {
-            actionLine = `The mood is ${tone}.`;
+            // Integrate voice marker with opening beat
+            sentences.push(`${ref} — ${openingBeat}.`);
+            sentences.push(`${marker.open}.`);
+        } else {
+            sentences.push(`${ref} — ${openingBeat}.`);
         }
-        if (actionLine) sentences.push(actionLine);
+    } else if (marker && setting) {
+        // If no opening beat but we have marker + setting, establish character
+        const ref = name || (pronoun === 'she' ? 'She' : pronoun === 'he' ? 'He' : 'They');
+        sentences.push(`${ref} is ${marker.open}.`);
     }
 
-    // ── Sentence 3: hook ─────────────────────────────────────────────────
-    if (userHook) {
-        sentences.push(userHook);
+    // ── Sentence 3: Situation + stakes + relationship texture ──────────
+    if (situation) {
+        let situationLine = situation;
+        if (relationship.length && tension) {
+            situationLine += ` — ${relationship[0].toLowerCase()} in a moment of ${tension.toLowerCase()}.`;
+        } else if (relationship.length) {
+            situationLine += ` — between ${relationship[0].toLowerCase()}.`;
+        } else if (tension) {
+            situationLine += ` — ${tension.toLowerCase()}.`;
+        } else {
+            situationLine += '.';
+        }
+        sentences.push(cap(situationLine));
+    }
+
+    // ── Sentence 4: Hook — generated from stakes/tension/marker/generic ─
+    let hookLine = '';
+    if (stakes) {
+        // Hook derived from stakes + tension type
+        const hooksByTension = {
+            'Forbidden': `Everything that matters is on the line — ${stakes.toLowerCase()}.`,
+            'Desperate': `Time is collapsing. ${cap(stakes)}.`,
+            'Aftermath': `Neither of you is ready to name it — ${stakes.toLowerCase()}.`,
+            'Ceremonial': `The ritual has its own momentum now. ${cap(stakes)}.`,
+            'Liminal': `Neither of you expected this. ${cap(stakes)}.`,
+            'Discovery': `One of you knows. The other is close. ${cap(stakes)}.`,
+            'Standoff': `The pause breaks. ${cap(stakes)}.`,
+            'Pursuit': `There is nowhere else to go — ${stakes.toLowerCase()}.`,
+            'Surrender': `One of you is here to give in. {{${stakes.charAt(0).toUpperCase() + stakes.slice(1)}}}`,
+            'Negotiation': `What you both came for is already being decided — ${stakes.toLowerCase()}.`,
+        };
+        hookLine = hooksByTension[tension] || hooksByTension['Forbidden'];
     } else if (marker?.crack) {
-        // Generate a hook from the personality crack point
+        // Hook from personality marker crack point
         const hooksByMode = {
             literary:  `But there is something — ${marker.crack}.`,
             erotic:    `Then — ${marker.crack}.`,
@@ -2199,9 +2157,9 @@ function buildFirstMessage() {
             romance:   `Then — ${marker.crack}.`,
             adventure: `${cap(marker.crack)}.`,
         };
-        sentences.push(hooksByMode[_sceneMode] || hooksByMode.romance);
+        hookLine = hooksByMode[_sceneMode] || hooksByMode.romance;
     } else {
-        // Fall back to a mode-appropriate generic hook — pick one at random per mode
+        // Fall back to mode-appropriate generic hook
         const genericHooks = {
             literary:  [
                 'Neither of you moves first.',
@@ -2235,10 +2193,11 @@ function buildFirstMessage() {
             ],
         };
         const pool = genericHooks[_sceneMode] || genericHooks.romance;
-        sentences.push(pool[Math.floor(Math.random() * pool.length)]);
+        hookLine = pool[Math.floor(Math.random() * pool.length)];
     }
+    if (hookLine) sentences.push(hookLine);
 
-    // Add NPC / player context as a trailing note if set
+    // ── NPC / Player context ────────────────────────────────────────────
     const npcs = g('forge-scene-npcs');
     const plyr = g('forge-scene-player');
     const ctx  = [];
@@ -2465,7 +2424,7 @@ function copyBlock(id, btn) {
 function exportJSON() {
     const data = {
         character: { name:g('forge-char-name'), age:g('forge-char-age'), pronouns:kwGet('pronouns'), species:kwGet('species'), role:kwGet('role'), background:kwGet('background'), build:kwGet('build'), height:kwGet('height'), skin:kwGet('skin'), hair:kwGet('hair'), eyes:kwGet('eyes'), face:kwGet('face'), marks:kwGet('marks'), scent:kwGet('scent'), nonhuman:kwGet('nonhuman'), personality:kwGet('personality'), disposition:kwGet('disposition'), traits:kwGet('traits'), skills:kwGet('skills'), voiceNote:g('forge-voice-note'), anatomy:{ chest:kwGet('chest'), nipples:kwGet('nipples'), genitaliaA:kwGet('genitalia-a'), genitaliaB:kwGet('genitalia-b'), rear:kwGet('rear'), pubic:kwGet('pubic'), anal:kwGet('anal'), fluids:kwGet('fluids'), fertility:kwGet('fertility'), erogenous:kwGet('erogenous'), bodymod:kwGet('bodymod') }, sexual:{ experience:kwGet('experience'), role:kwGet('sexrole'), verbal:kwGet('verbal'), kinks:kwGet('kinks'), likes:kwGet('likes'), limits:kwGet('limits'), triggers:kwGet('triggers') } },
-        scene:  { location:kwGet('location'), atmosphere:kwGet('atmosphere'), situation:kwGet('situation'), mood:kwGet('mood'), npcs:g('forge-scene-npcs'), player:g('forge-scene-player'), hook:g('forge-scene-hook'), full:g('forge-scene-full') },
+        scene:  { tension:kwGet('tension'), relationship:kwGet('relationship'), setting:g('forge-scene-setting'), situation:g('forge-scene-situation'), openingBeat:g('forge-scene-opening-beat'), stakes:g('forge-scene-stakes'), npcs:g('forge-scene-npcs'), player:g('forge-scene-player'), full:g('forge-scene-full') },
         style:  { mode:_sceneMode, pov:kwGet('pov'), tense:kwGet('tense'), rhythm:kwGet('rhythm'), vocab:kwGet('vocab'), pacing:kwGet('pacing'), focus:kwGet('descfocus'), toggles:getActiveToggles(), custom:g('forge-style-custom'), personaNote:g('forge-persona-note'), author:g('forge-style-author'), title:g('forge-style-title'), genre:g('forge-style-genre'), rating:g('forge-style-rating') },
         relationships:_relationships, worldInfoEntries:_loreEntries, dialogue:_dialoguePairs,
         tags:g('forge-st-tags'), cardFormat:_cardFormat, explicitAnatomy:_explicitAnat,
@@ -2489,7 +2448,7 @@ function randomizeAll() {
      'personality','disposition','traits','skills',
      'chest','nipples','rear','pubic','anal','fluids','fertility','erogenous','bodymod',
      'experience','sexrole','verbal','kinks','likes','limits','triggers',
-     'location','atmosphere','situation','mood','pov','tense','rhythm','vocab','pacing','descfocus'
+     'tension','relationship','pov','tense','rhythm','vocab','pacing','descfocus'
     ].forEach(k => kwRandom(k));
     // Genitalia special case
     KW_STATE['genitalia-a'] = []; KW_STATE['genitalia-b'] = [];
@@ -2506,7 +2465,6 @@ function randomizeAll() {
         kwToggleItem('genitalia-a', pick(['tight','very tight','accommodating']));
         kwToggleItem('genitalia-a', pick(['velvety interior','ridged interior','smooth interior']));
     }
-    rfld('forge-scene-hook', HOOKS);
     ['forge-sl-ds','forge-sl-sb','forge-sl-cw','forge-sl-pc'].forEach(id => {
         const el = document.getElementById(id); if (el) { el.value = Math.floor(Math.random() * 11); slv(id); }
     });
@@ -2700,13 +2658,12 @@ function initAllWidgets() {
         ['erogenous','fw-erogenous'],  ['bodymod','fw-bodymod'],
         ['experience','fw-experience'],['sexrole','fw-sexrole'],       ['verbal','fw-verbal'],
         ['kinks','fw-kinks'],          ['likes','fw-likes'],           ['limits','fw-limits'],
-        ['triggers','fw-triggers'],    ['location','fw-location'],     ['atmosphere','fw-atmosphere'],
-        ['situation','fw-situation'],  ['mood','fw-mood'],
+        ['triggers','fw-triggers'],    ['tension','fw-tension'],       ['relationship','fw-relationship'],
         ['pov','fw-pov'],              ['tense','fw-tense'],           ['rhythm','fw-rhythm'],
         ['vocab','fw-vocab'],          ['pacing','fw-pacing'],         ['descfocus','fw-descfocus'],
     ];
     BINDINGS.forEach(([key, cid]) => kwInit(key, cid));
-    renderRelationships(); renderScenePresets(); renderSceneModes();
+    renderRelationships(); renderSceneArchetypes(); renderSceneModes();
     renderWorldLorePresets(); renderLore(); renderDialogue();
     ['forge-sl-ds','forge-sl-sb','forge-sl-cw','forge-sl-pc'].forEach(id => slv(id));
     regen();
@@ -2717,7 +2674,7 @@ function initAllWidgets() {
 // ═══════════════════════════════════════════════════════════════════════════
 const FORGE = {
     // data refs used by inline handlers in creator.html
-    NAMES, NPC_PRESETS, HOOKS,
+    NAMES, NPC_PRESETS, SCENE_ARCHETYPES, TENSION_TYPES, RELATIONSHIP_HISTORY,
 
     // panel
     open:  openPanel,
