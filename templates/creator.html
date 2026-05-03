@@ -246,8 +246,10 @@
             </div>
             <div id="forge-dialogue-list"></div>
             <div style="display:flex;gap:7px;margin-top:8px;flex-wrap:wrap;">
-              <button class="forge-btn forge-btn-ghost" onclick="FORGE.addDialoguePair()">+ Add Exchange</button>
-              <button class="forge-dice-btn" style="padding:5px 10px;" onclick="FORGE.randomizeDialogue()">⚄ Random</button>
+              <button class="forge-btn forge-btn-ghost" onclick="FORGE.addDialoguePair()">+ Add</button>
+              <button class="forge-btn forge-btn-ghost" onclick="FORGE.generatePersonalityDialogue()" title="Generate from personality chips + scene mode">⚡ Personality</button>
+              <button class="forge-btn forge-btn-ghost" onclick="FORGE.generateSceneDialogue()" title="Generate from scene mood + situation chips">⚡ Scene</button>
+              <button class="forge-dice-btn" style="padding:5px 10px;" onclick="FORGE.randomizeDialogue()">⚄</button>
             </div>
           </div>
 

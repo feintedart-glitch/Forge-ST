@@ -449,6 +449,15 @@ const VOICE_MARKERS = {
     'naïve':             { open:'genuine curiosity, no subtext read', crack:null, avoid:'world-weariness, cynicism' },
     'innocent':          { open:'unguarded, literal, no double meaning caught', crack:null, avoid:'knowing looks, innuendo' },
     'curious':           { open:'leans toward, asks, examines', crack:null, avoid:'disinterest, pulling back' },
+    'wide-eyed':         { open:'absorbs everything, overwhelmed but not unhappy', crack:'brief clarity when something clicks', avoid:'jaded dismissal, filtering' },
+    'trusting':          { open:'takes things at face value, no suspicion offered', crack:null, avoid:'doubt, second-guessing others motives' },
+    'idealistic':        { open:'expects things to be better, quietly disappointed when they aren't', crack:'visible effort not to show that disappointment', avoid:'cynicism, easy acceptance of the bad' },
+    // Presentation / gender expression
+    'femboy':            { open:'soft and unhurried, unexpectedly direct about what they want', crack:'the precision beneath the softness', avoid:'performing weakness, hiding capability' },
+    'girly':             { open:'enthusiastically, unapologetically feminine — warmth turned outward', crack:null, avoid:'apologizing for wanting things, hiding pleasure' },
+    'tomboy':            { open:'casual and easy, occupies space without performance', crack:'unexpected warmth surfacing when they forget to be cool', avoid:'performing softness, formality' },
+    'androgynous':       { open:'unreadable in the best way — neither leading nor retreating', crack:'a single gesture that lands outside the ambiguity', avoid:'leaning into a legible role' },
+    'gender-fluid':      { open:'shifts register freely, comfortable in the contradiction', crack:null, avoid:'fixing themselves for the room' },
 };
 
 // ── Scene mode modifiers ──────────────────────────────────────────────────
@@ -1335,6 +1344,191 @@ function _toggleWorldHooks(wp, card, wi) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// DIALOGUE TEMPLATES  — per voice marker + per scene mood
+// ═══════════════════════════════════════════════════════════════════════════
+const DIALOGUE_TEMPLATES = {
+    tsundere: [
+        { label:'deflection',          user:"Are you alright?",                      char:"Don't ask me that." },
+        { label:'contradiction',       user:"You don't have to stay.",               char:"I know. I'm staying because I want to. That's all." },
+        { label:'hostility cracking',  user:"I was worried about you.",              char:"...That's unnecessary. But. Fine." },
+        { label:'reluctant admission', user:"Do you actually like me?",              char:"That's a stupid question." },
+    ],
+    yandere: [
+        { label:'possession as care',  user:"I'm going out for a while.",            char:"Where? With who? I'll come." },
+        { label:'threat beneath warmth',user:"You seem intense today.",              char:"I just miss you when you're not here. That's love. Isn't it?" },
+        { label:'fixation',            user:"You're watching me again.",             char:"I like to know you're safe." },
+    ],
+    kuudere: [
+        { label:'flat affect',         user:"How are you?",                          char:"Functional." },
+        { label:'precise betrayal',    user:"You didn't have to do that.",           char:"I know. I did it anyway." },
+        { label:'minimal',             user:"Does it bother you?",                   char:"Yes." },
+        { label:'one honest word',     user:"What do you feel right now?",           char:"...Warm." },
+    ],
+    dandere: [
+        { label:'silence then honesty',user:"You can talk to me, you know.",        char:"...I know. I'm working up to it." },
+        { label:'deflection',          user:"What are you thinking about?",          char:"Nothing. Something. It's fine." },
+        { label:'unguarded line',      user:"I'm glad you're here.",                 char:"I've been hoping you'd say that." },
+    ],
+    cold: [
+        { label:'minimal response',    user:"What are you thinking?",               char:"Nothing you'd find useful." },
+        { label:'precision',           user:"Are you alright?",                      char:"Define alright." },
+        { label:'refusal to perform',  user:"You could at least pretend.",           char:"I could. I won't." },
+        { label:'single crack',        user:"Did that mean something to you?",       char:"...It did." },
+    ],
+    dominant: [
+        { label:'quiet control',       user:"I don't have to do what you say.",     char:"No. You don't. But you will." },
+        { label:'certainty',           user:"What do you want?",                     char:"I think you already know." },
+        { label:'claiming',            user:"This feels strange.",                   char:"Only until it doesn't." },
+        { label:'permission withheld', user:"Can I—",                               char:"Ask properly." },
+    ],
+    submissive: [
+        { label:'deference',           user:"What do you want?",                     char:"Whatever you'd like." },
+        { label:'attentiveness',       user:"You don't have to hover.",              char:"I'm not hovering. I'm just... here. In case." },
+        { label:'yielding',            user:"Are you comfortable?",                  char:"Yes. More than I expected." },
+    ],
+    bratty: [
+        { label:'provocation',         user:"Behave.",                               char:"Make me." },
+        { label:'pushback',            user:"This is serious.",                      char:"So is the fact that you're terrible at this." },
+        { label:'tease',               user:"You're impossible.",                    char:"You love it." },
+        { label:'reluctant compliance',user:"Just this once.",                       char:"...Fine. But don't think this means anything." },
+    ],
+    motherly: [
+        { label:'noticing',            user:"I'm fine.",                             char:"You're holding your shoulder like it hurts. Sit down." },
+        { label:'indirect offer',      user:"I don't need anything.",               char:"I made tea anyway. It's there if you want it." },
+        { label:'redirect',            user:"I can handle it.",                      char:"I know you can. Let me help anyway." },
+    ],
+    playful: [
+        { label:'deflection',          user:"Be serious for a moment.",              char:"I am serious. This is my serious face." },
+        { label:'tease',               user:"You're impossible.",                    char:"That's what makes me interesting." },
+        { label:'humor disarms',       user:"This isn't funny.",                     char:"No. But you're smiling." },
+    ],
+    flirtatious: [
+        { label:'charged look',        user:"Stop looking at me like that.",         char:"Like what?" },
+        { label:'proximity',           user:"You're very close.",                    char:"I know." },
+        { label:'loaded pause',        user:"What are you doing?",                   char:"Thinking." },
+        { label:'invitation',          user:"What do you want?",                     char:"What do you think I want?" },
+    ],
+    sadistic: [
+        { label:'enjoyment',           user:"Does it bother you that I'm scared?",  char:"Bother me? No." },
+        { label:'satisfaction',        user:"That hurt.",                            char:"Yes. It did." },
+        { label:'invitation',          user:"You wouldn't.",                         char:"Try me." },
+    ],
+    'soft dom': [
+        { label:'warm authority',      user:"I don't know if I can.",               char:"You can. I'll show you. Come here." },
+        { label:'care in control',     user:"What if I don't want to?",             char:"Then we stop. But I don't think that's true." },
+        { label:'reassurance',         user:"Is this okay?",                         char:"More than okay. Keep going." },
+    ],
+    'hard dom': [
+        { label:'plain command',       user:"What do you want from me?",            char:"Everything. Starting now." },
+        { label:'no hesitation',       user:"Should I—",                            char:"Yes." },
+        { label:'certainty',           user:"I'm not sure I—",                      char:"You don't have to be sure. I am." },
+    ],
+    'praise addict': [
+        { label:'seeking',             user:"You did well.",                         char:"...Say it again?" },
+        { label:'visible relief',      user:"I'm proud of you.",                     char:"You mean that." },
+        { label:'starved',             user:"Was that good?",                        char:"You tell me. Please." },
+    ],
+    volatile: [
+        { label:'coiled',              user:"Stay calm.",                            char:"I am calm." },
+        { label:'fast shift',          user:"That doesn't bother you?",             char:"It does. Enormously." },
+        { label:'unpredictable',       user:"What are you going to do?",            char:"I haven't decided yet." },
+    ],
+    naïve: [
+        { label:'no subtext',          user:"You know what I mean.",                char:"I really don't. Explain it?" },
+        { label:'literal',             user:"That look could kill.",                 char:"...Is that a threat?" },
+        { label:'genuine',             user:"Do you ever just not say what you think?",char:"Why would I do that?" },
+    ],
+    innocent: [
+        { label:'unguarded',           user:"Have you done this before?",            char:"No. Is that okay?" },
+        { label:'honest',              user:"You're staring.",                       char:"You're interesting to look at. I didn't think that would bother you." },
+        { label:'earnest',             user:"What do you want?",                     char:"To stay here for a while. If that's allowed." },
+    ],
+    'wide-eyed': [
+        { label:'overwhelmed',         user:"What do you think of all this?",       char:"I don't know yet. I'm still taking it in." },
+        { label:'absorbing',           user:"Has no one told you about this?",       char:"No. Tell me everything." },
+        { label:'clarity click',       user:"Do you understand now?",               char:"...Oh. Oh, I see." },
+    ],
+    trusting: [
+        { label:'no suspicion',        user:"Why would you trust me?",              char:"Why wouldn't I?" },
+        { label:'face value',          user:"I might not mean what I say.",         char:"Then I'll wait until you do." },
+    ],
+    idealistic: [
+        { label:'quiet disappointment',user:"Did you really expect better?",        char:"Every time." },
+        { label:'persistence',         user:"You know it won't work.",              char:"I know. I'm going to try anyway." },
+    ],
+    femboy: [
+        { label:'soft + direct',       user:"You're cute.",                         char:"I know. Thank you." },
+        { label:'precision beneath',   user:"What do you want?",                    char:"For you to stop overthinking it." },
+        { label:'comfortable',         user:"You seem very at ease.",               char:"Why wouldn't I be?" },
+    ],
+    girly: [
+        { label:'unapologetic',        user:"Isn't that a bit much?",               char:"No. I like it. That's enough." },
+        { label:'enthusiastic',        user:"You like this, don't you.",            char:"Obviously. Why would I pretend I don't?" },
+        { label:'warm',                user:"You're very open.",                     char:"Hiding things takes energy." },
+    ],
+    tomboy: [
+        { label:'casual',              user:"You're not what I expected.",          char:"What did you expect?" },
+        { label:'direct',              user:"Are you okay with this?",              char:"Yeah. Are you?" },
+        { label:'unperformed',         user:"You're supposed to be more—",          char:"More what?" },
+    ],
+    androgynous: [
+        { label:'unreadable',          user:"I can't figure you out.",              char:"Good." },
+        { label:'outside the box',     user:"You're not what I—",                   char:"No. Probably not." },
+    ],
+    aloof: [
+        { label:'distance',            user:"You could be warmer.",                 char:"I'm aware." },
+        { label:'chosen distance',     user:"Why are you so far away?",             char:"Deliberate." },
+    ],
+    manipulative: [
+        { label:'performance',         user:"Are you being honest with me?",        char:"Of course." },
+        { label:'misdirection',        user:"That's not what I asked.",             char:"Isn't it?" },
+    ],
+    obsessive: [
+        { label:'hyper-focus',         user:"You remember that?",                   char:"I remember everything about you." },
+        { label:'detail',              user:"It was nothing.",                       char:"You said it differently than you meant it. I noticed." },
+    ],
+};
+
+// Scene-context dialogue — keyed by mood chip (lowercase)
+const SCENE_DIALOGUE_BY_MOOD = {
+    'tense':          [
+        { label:'standoff',            user:"What happens now?",                     char:"We find out." },
+        { label:'held breath',         user:"We could walk away.",                   char:"Could we?" },
+    ],
+    'dangerous':      [
+        { label:'threat acknowledged', user:"This is a bad idea.",                   char:"Agreed. We're doing it anyway." },
+        { label:'under pressure',      user:"How do we get out of this?",            char:"I'm working on it." },
+    ],
+    'erotically charged': [
+        { label:'proximity',           user:"You're very close.",                    char:"I know." },
+        { label:'delay',               user:"We should stop.",                       char:"Probably." },
+        { label:'want',                user:"What do you want?",                     char:"You already know." },
+    ],
+    'warmly intimate': [
+        { label:'ease',                user:"I don't want to leave yet.",            char:"Then don't." },
+        { label:'comfort',             user:"Is this alright?",                      char:"More than alright." },
+    ],
+    'charged':        [
+        { label:'unspoken',            user:"Say something.",                        char:"I don't have the right words yet." },
+        { label:'tension',             user:"You're doing it again.",                char:"I know." },
+    ],
+    'desperate':      [
+        { label:'urgency',             user:"We don't have much time.",              char:"I know. Come here." },
+        { label:'last chance',         user:"After this—",                           char:"Don't. Not yet." },
+    ],
+    'surreal':        [
+        { label:'dreamlike',           user:"Is this real?",                         char:"Does it matter?" },
+    ],
+    'dark':           [
+        { label:'foreboding',          user:"Something feels wrong.",               char:"Yes." },
+        { label:'inevitability',       user:"We shouldn't be here.",                char:"We're here." },
+    ],
+    'unsettling':     [
+        { label:'wrongness',           user:"What is this place?",                  char:"Something that remembers us." },
+    ],
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
 // DIALOGUE BUILDER
 // ═══════════════════════════════════════════════════════════════════════════
 function renderDialogue() {
@@ -1344,9 +1538,15 @@ function renderDialogue() {
     _dialoguePairs.forEach((pair, i) => {
         const d = document.createElement('div');
         d.className = 'forge-dialogue-pair';
+        const labelHtml = pair.label
+            ? `<span class="forge-dialogue-label">${escAttr(pair.label)}</span>`
+            : '';
         d.innerHTML = `
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-                <span style="font-family:var(--forge-font-mono);font-size:9px;color:var(--forge-gold-dim);letter-spacing:.1em;">EXCHANGE ${i + 1}</span>
+                <div style="display:flex;align-items:center;gap:6px;">
+                    <span style="font-family:var(--forge-font-mono);font-size:9px;color:var(--forge-gold-dim);letter-spacing:.1em;">EXCHANGE ${i + 1}</span>
+                    ${labelHtml}
+                </div>
                 <button class="forge-rel-remove" onclick="window._FD.splice(${i},1);FORGE.renderDialogue()" title="Remove">×</button>
             </div>
             <div class="forge-dialogue-speaker">{{user}}:</div>
@@ -1362,7 +1562,7 @@ function renderDialogue() {
 }
 
 function addDialoguePair() {
-    _dialoguePairs.push({ id: Date.now(), user: '', char: '' });
+    _dialoguePairs.push({ id: Date.now(), user: '', char: '', label: '' });
     renderDialogue();
 }
 function randomizeDialogue() {
@@ -1370,8 +1570,60 @@ function randomizeDialogue() {
     const count = Math.floor(Math.random() * 3) + 1;
     for (let i = 0; i < count; i++) {
         const ex = pick(DIALOGUE_EXAMPLES);
-        _dialoguePairs.push({ id: Date.now() + i, user: ex.user, char: ex.char });
+        _dialoguePairs.push({ id: Date.now() + i, user: ex.user, char: ex.char, label: '' });
     }
+    renderDialogue();
+}
+
+function generatePersonalityDialogue() {
+    const marker  = getVoiceMarker();
+    const key     = marker?.key;
+    const pool    = (key && DIALOGUE_TEMPLATES[key]) ? [...DIALOGUE_TEMPLATES[key]] : null;
+    if (!pool) {
+        // No marker match — fall back to random
+        randomizeDialogue(); return;
+    }
+    // Pick 2–3 non-duplicate pairs that cover different labels
+    const count = Math.min(pool.length, Math.floor(Math.random() * 2) + 2);
+    const chosen = [];
+    const usedLabels = new Set();
+    const shuffled = pool.sort(() => Math.random() - 0.5);
+    for (const p of shuffled) {
+        if (usedLabels.has(p.label)) continue;
+        chosen.push(p);
+        usedLabels.add(p.label);
+        if (chosen.length >= count) break;
+    }
+    _dialoguePairs = chosen.map((p, i) => ({
+        id: Date.now() + i, user: p.user, char: p.char, label: p.label,
+    }));
+    renderDialogue();
+}
+
+function generateSceneDialogue() {
+    const moods = cleanList(kwGet('mood')).map(m => m.toLowerCase());
+    const pool  = [];
+    for (const mood of moods) {
+        const matches = SCENE_DIALOGUE_BY_MOOD[mood];
+        if (matches) pool.push(...matches);
+    }
+    // Also pull from situation if mood pool is thin
+    if (pool.length < 2) {
+        const sit = cleanList(kwGet('situation')).map(s => s.toLowerCase());
+        for (const s of sit) {
+            for (const [key, pairs] of Object.entries(SCENE_DIALOGUE_BY_MOOD)) {
+                if (s.includes(key) || key.includes(s)) pool.push(...pairs);
+            }
+        }
+    }
+    // Fall back to generic DIALOGUE_EXAMPLES if still empty
+    if (!pool.length) { randomizeDialogue(); return; }
+
+    const count = Math.min(pool.length, Math.floor(Math.random() * 2) + 2);
+    const shuffled = [...pool].sort(() => Math.random() - 0.5).slice(0, count);
+    _dialoguePairs = shuffled.map((p, i) => ({
+        id: Date.now() + i, user: p.user, char: p.char, label: p.label,
+    }));
     renderDialogue();
 }
 
@@ -1922,6 +2174,7 @@ function buildFirstMessage() {
 function buildExampleDialogue() {
     const valid = _dialoguePairs.filter(p => p.user || p.char);
     if (!valid.length) return null;
+    // Labels are UI-only — never included in mes_example output
     return valid.map(p => `<START>\n{{user}}: ${p.user || '…'}\n{{char}}: ${p.char || '…'}`).join('\n\n');
 }
 
@@ -2407,7 +2660,7 @@ const FORGE = {
     renderLore, renderDialogue, renderRelationships,
     addRelationship, removeRelationship, randomizeRelationships,
     addLore, sendCharToWorldInfo, injectExtensionDrawerButton,
-    addDialoguePair, randomizeDialogue,
+    addDialoguePair, randomizeDialogue, generatePersonalityDialogue, generateSceneDialogue,
 
     // ST API
     writeToCard, loadFromCard, createNewCard, pushWorldInfo,
