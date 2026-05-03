@@ -13,36 +13,31 @@ const _BASE_URL = (() => {
     catch (_) { return `/scripts/extensions/third-party/Forge-ST/`; }
 })();
 
-// ── Optional ST imports with graceful fallback ──────────────────────────────
+// ── Optional ST imports — fire-and-forget so they never block module init ──
 let _saveCharacter = null;
 let _createCharacter = null;
 let _eventSource = null;
 let _event_types = null;
 let _getTokenCount = (text) => Math.ceil(text.split(/\s+/).filter(Boolean).length * 1.35);
 
-try {
-    const script = await import('../../../../script.js');
-    _saveCharacter  = script.saveCharacter  ?? null;
-    _createCharacter = script.createCharacter ?? null;
-    _eventSource    = script.eventSource    ?? null;
-    _event_types    = script.event_types    ?? null;
-} catch (e) {
-    console.warn('[FORGE] Could not import script.js globals — ST write-back limited.', e);
-}
+import('../../../../script.js').then(s => {
+    _saveCharacter   = s.saveCharacter   ?? null;
+    _createCharacter = s.createCharacter ?? null;
+    _eventSource     = s.eventSource     ?? null;
+    _event_types     = s.event_types     ?? null;
+}).catch(() => {});
 
-try {
-    const tok = await import('../../../../scripts/tokenizers.js');
-    if (typeof tok.getTokenCount === 'function') _getTokenCount = tok.getTokenCount;
-} catch (_) { /* use word-count fallback */ }
+import('../../../../scripts/tokenizers.js').then(t => {
+    if (typeof t.getTokenCount === 'function') _getTokenCount = t.getTokenCount;
+}).catch(() => {});
 
 // ── World Info ──────────────────────────────────────────────────────────────
 let _createWorldInfoEntry = null;
 let _world_names = null;
-try {
-    const wi = await import('../../../../scripts/world-info.js');
-    _createWorldInfoEntry = wi.createWorldInfoEntry ?? null;
-    _world_names          = wi.world_names          ?? null;
-} catch (_) { /* world info push disabled */ }
+import('../../../../scripts/world-info.js').then(w => {
+    _createWorldInfoEntry = w.createWorldInfoEntry ?? null;
+    _world_names          = w.world_names          ?? null;
+}).catch(() => {});
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CONSTANTS
