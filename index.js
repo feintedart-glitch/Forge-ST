@@ -160,36 +160,38 @@ function closePanel() {
 // BUTTON INJECTION INTO ST UI
 // ═══════════════════════════════════════════════════════════════════════════
 function injectForgeButton() {
-    // Don't inject twice
-    if (document.getElementById('forge-open-btn')) return;
+    // Floating fixed-position button — always visible regardless of ST layout
+    if (!document.getElementById('forge-open-btn')) {
+        const btn = document.createElement('button');
+        btn.id        = 'forge-open-btn';
+        btn.innerHTML = '⚒ FORGE';
+        btn.title     = 'Open FORGE Character Creator';
+        btn.onclick   = () => FORGE.open();
+        document.body.appendChild(btn);
+    }
 
-    const btn = document.createElement('button');
-    btn.id          = 'forge-open-btn';
-    btn.textContent = '⚒ FORGE';
-    btn.title       = 'Open FORGE Character Creator';
-    btn.onclick     = () => FORGE.open();
+    // Also try to inject a button inside the extension's settings drawer
+    // in the Extensions panel, so it's accessible there too
+    injectExtensionDrawerButton();
+}
 
-    // Try several injection targets in priority order
-    const targets = [
-        '#rm_button_create',           // "Create Character" button area
-        '#character_cross',            // character close/controls bar
-        '#form_create_container',      // character editing form
-        '#top-bar',                    // ST top bar
-        '#right-nav-panel',            // right nav
-        'body',                        // last resort
-    ];
+function injectExtensionDrawerButton() {
+    if (document.getElementById('forge-ext-open-btn')) return;
 
-    for (const sel of targets) {
-        const container = document.querySelector(sel);
-        if (container) {
-            // For form_create_container, prepend inside; for others append
-            if (sel === '#form_create_container') {
-                container.insertBefore(btn, container.firstChild);
-            } else {
-                container.appendChild(btn);
-            }
-            return;
-        }
+    // ST renders extension drawers with inline-drawer-header containing the display_name
+    const drawers = document.querySelectorAll('.inline-drawer');
+    for (const drawer of drawers) {
+        const header = drawer.querySelector('.inline-drawer-header b, .inline-drawer-header span');
+        if (!header) continue;
+        if (!header.textContent.includes('FORGE') && !header.textContent.includes('Character Creator')) continue;
+        const content = drawer.querySelector('.inline-drawer-content');
+        if (!content) continue;
+        const extBtn = document.createElement('button');
+        extBtn.id        = 'forge-ext-open-btn';
+        extBtn.innerHTML = '⚒ Open FORGE Character Creator';
+        extBtn.onclick   = () => FORGE.open();
+        content.insertBefore(extBtn, content.firstChild);
+        return;
     }
 }
 
@@ -1856,7 +1858,7 @@ const FORGE = {
     // renderers
     renderLore, renderDialogue, renderRelationships,
     addRelationship, removeRelationship, randomizeRelationships,
-    addLore, sendCharToWorldInfo,
+    addLore, sendCharToWorldInfo, injectExtensionDrawerButton,
     addDialoguePair, randomizeDialogue,
 
     // ST API
