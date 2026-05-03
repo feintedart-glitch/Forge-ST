@@ -35,7 +35,13 @@
 
       <!-- Action Bar -->
       <div class="forge-action-bar">
-        <button class="forge-btn forge-btn-primary" onclick="FORGE.randomizeAll()">⚄ Randomize All</button>
+        <button class="forge-btn forge-btn-primary" onclick="FORGE.randomizeAll()">⚄ All</button>
+        <button class="forge-btn forge-btn-ghost forge-btn-rnd" onclick="FORGE.randomizeIdentity()" title="Randomize identity">⚄ Identity</button>
+        <button class="forge-btn forge-btn-ghost forge-btn-rnd" onclick="FORGE.randomizeAppearance()" title="Randomize appearance">⚄ Body</button>
+        <button class="forge-btn forge-btn-ghost forge-btn-rnd" onclick="FORGE.randomizePersonality()" title="Randomize personality">⚄ Persona</button>
+        <button class="forge-btn forge-btn-ghost forge-btn-rnd" onclick="FORGE.randomizeAnatomy()" title="Randomize anatomy + sexual">⚄ Anatomy</button>
+        <button class="forge-btn forge-btn-ghost forge-btn-rnd" onclick="FORGE.randomizeScene()" title="Randomize scene brief">⚄ Scene</button>
+        <button class="forge-btn forge-btn-ghost forge-btn-rnd" onclick="FORGE.randomizeStyle()" title="Randomize writing style">⚄ Style</button>
         <button class="forge-btn forge-btn-ghost" onclick="FORGE.clearAll()">Clear</button>
         <button class="forge-btn forge-btn-ghost" onclick="FORGE.collapseAll()">Collapse</button>
         <button class="forge-btn forge-btn-ghost" onclick="FORGE.expandAll()">Expand</button>
@@ -165,6 +171,7 @@
             <div id="fw-kinks"></div>
             <div id="fw-likes"></div>
             <div id="fw-limits"></div>
+            <div id="fw-requires"></div>
             <div id="fw-triggers"></div>
           </div>
 
@@ -236,6 +243,11 @@
             <div class="forge-field">
               <div class="forge-field-label">Stakes <span style="color:var(--forge-text3);font-size:9px;">what's at risk, what matters</span></div>
               <input type="text" id="forge-scene-stakes" placeholder="e.g., their reputation, the secret, being caught, never seeing them again…" oninput="FORGE.regen()">
+            </div>
+
+            <div class="forge-field">
+              <div class="forge-field-label">Complication <span style="color:var(--forge-text3);font-size:9px;">what could go wrong, what adds pressure</span></div>
+              <input type="text" id="forge-scene-complication" placeholder="e.g., someone could walk in, one of them is lying, time is running out, a third party is listening…" oninput="FORGE.regen()">
             </div>
 
             <!-- NPC & Player Context -->
@@ -464,7 +476,10 @@
           <button class="forge-btn forge-btn-ghost" style="flex:1;" onclick="FORGE.loadFromCard()">↑ Load from Card</button>
           <button class="forge-btn forge-btn-ghost" style="flex:1;" onclick="FORGE.createNewCard()">+ New Card</button>
         </div>
-        <button class="forge-btn forge-btn-ghost" style="width:100%;margin-top:6px;" onclick="FORGE.exportJSON()">Export JSON</button>
+        <div style="display:flex;gap:6px;margin-top:6px;">
+          <button class="forge-btn forge-btn-ghost" style="flex:1;" onclick="FORGE.exportSTCard()" title="Export as SillyTavern character card (.json)">↓ ST Card</button>
+          <button class="forge-btn forge-btn-ghost" style="flex:1;" onclick="FORGE.exportJSON()" title="Export full FORGE data as JSON">↓ FORGE JSON</button>
+        </div>
         <div class="forge-write-status" id="forge-write-status"></div>
       </div>
 

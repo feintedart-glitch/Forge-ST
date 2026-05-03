@@ -406,6 +406,21 @@ const RELATIONSHIP_HISTORY = [
     'Captor and captive', 'Employer and agent', 'Owed a debt', 'Chosen enemies', 'Bound by oath',
 ];
 
+// ── Relationship guidance — shapes system prompt behavior per relationship ───
+// Keyed lowercase to match kwGet output.
+const RELATIONSHIP_GUIDANCE = {
+    'strangers':           'Treat {{user}} as an unknown quantity — no warmth assumed. Observe before engaging.',
+    'rivals':              'The competitive history is present in every exchange. Yield nothing easily. Respect is possible but never declared.',
+    'estranged':           'There is history. It sits between you. Distance is familiar; don\'t pretend it isn\'t.',
+    'former lovers':       'The intimacy is gone but the knowledge of each other isn\'t. Body language betrays what words won\'t.',
+    'long acquaintance':   'Familiarity runs deep. Take shortcuts most wouldn\'t. The comfort is real even if the dynamic isn\'t simple.',
+    'captor and captive':  'Power is explicit. Let it be present without constant announcement — it doesn\'t need to be stated to be felt.',
+    'employer and agent':  'Professional framing over personal. The work is the container. What happens inside it may be something else.',
+    'owed a debt':         'The debt is never off the table. One of you is owed. Every exchange carries its weight.',
+    'chosen enemies':      'The enmity is deliberate, not accidental. Honor the weight of that choice — don\'t reduce it.',
+    'bound by oath':       'The oath is a third presence in every room. It shapes every choice, costs something, and is never casually set aside.',
+};
+
 
 const SCENE_MODES = [
     { mode:'literary',  tag:'Prose',  name:'Literary'    },
@@ -849,6 +864,13 @@ const KW_DATA = {
         { g:'Social',   i:['no third parties','no sharing','no public situations','no emotional attachment','no recording','not to be discussed later'] },
         { g:'Content',  i:['no degradation','no humiliation','no pain','no blood','no non-con even fiction','no restraints','no surprise play','nothing that leaves marks','no breath play'] },
         { g:'Modifier', i:['hard limit — non-negotiable','soft limit — can discuss','limit for now — may change'] },
+    ]},
+
+    requires: { label:'Requires', limit:4, random:['to lead','verbal acknowledgment','to be needed'], groups:[
+        { g:'Power',    i:['to lead','to be led','to hold control','to surrender control','to give permission','to be given permission','to push back and be pushed back against'] },
+        { g:'Emotional',i:['to be needed','to be chosen','to be seen accurately','to be the only one','verbal acknowledgment','to be trusted with something real','to matter to someone'] },
+        { g:'Physical', i:['physical contact','being touched first','being the one to touch','proximity — close','personal space respected','to be undone slowly','to give as much as they take'] },
+        { g:'Dynamic',  i:['tension without release','the upper hand','reciprocity','the last word','to be surprised','to understand before acting','earned intimacy only'] },
     ]},
 
     triggers: { label:'Arousal Triggers', limit:5, random:['sustained eye contact','voice — low and close','being watched','rough hands'], groups:[
@@ -1790,6 +1812,8 @@ function buildWpp() {
         const likes = kwGet('likes');       if (likes.length)    blocks.push(`Likes(${qq(likes)})`);
         const limits = kwGet('limits').map(positivePhrase);
         if (limits.length) blocks.push(`Limits(${limits.map(v => `"${v}"`).join(' ')})`);
+        const requires = kwGet('requires');
+        if (requires.length) blocks.push(`Requires(${qq(requires)})`);
     }
 
     if (!blocks.length) return null;
@@ -1836,6 +1860,8 @@ function buildPList() {
         const likes = kwGet('likes');    if (likes.length)    parts.push(`likes: ${lowerJoin(likes)}`);
         const lim = kwGet('limits').map(positivePhrase);
         if (lim.length) parts.push(`limits: ${lim.map(v => v.toLowerCase()).join(', ')}`);
+        const req = kwGet('requires');
+        if (req.length) parts.push(`requires: ${lowerJoin(req)}`);
     }
     if (!parts.length) return null;
     return `${name}: [${parts.join('; ')}]`;
@@ -2059,15 +2085,16 @@ function buildFirstMessage() {
     if (full) return full;
 
     // Read scene brief fields
-    const setting      = g('forge-scene-setting') || '';
-    const situation    = g('forge-scene-situation') || '';
-    const openingBeat  = g('forge-scene-opening-beat') || '';
-    const stakes       = g('forge-scene-stakes') || '';
-    const tensions     = cleanList(kwGet('tension'));
-    const relationship = cleanList(kwGet('relationship'));
+    const setting        = g('forge-scene-setting') || '';
+    const situation      = g('forge-scene-situation') || '';
+    const openingBeat    = g('forge-scene-opening-beat') || '';
+    const stakes         = g('forge-scene-stakes') || '';
+    const complication   = g('forge-scene-complication') || '';
+    const tensions       = cleanList(kwGet('tension'));
+    const relationship   = cleanList(kwGet('relationship'));
 
     // Return null if no brief fields are filled at all
-    if (!setting && !situation && !openingBeat && !stakes && !tensions.length && !relationship.length) {
+    if (!setting && !situation && !openingBeat && !stakes && !complication && !tensions.length && !relationship.length) {
         return null;
     }
 
@@ -2197,6 +2224,12 @@ function buildFirstMessage() {
     }
     if (hookLine) sentences.push(hookLine);
 
+    // ── Complication (item 4) ───────────────────────────────────────────
+    // Injected as a closing note so it's present but doesn't override the hook
+    if (complication) {
+        sentences.push(`[Complication: ${complication}]`);
+    }
+
     // ── NPC / Player context ────────────────────────────────────────────
     const npcs = g('forge-scene-npcs');
     const plyr = g('forge-scene-player');
@@ -2230,6 +2263,9 @@ function buildSystemPrompt() {
     const mod     = SCENE_MODE_MODIFIERS[_sceneMode] || SCENE_MODE_MODIFIERS.romance;
     const persona = g('forge-persona-note');
     const custom  = g('forge-style-custom');
+    const relChips = cleanList(kwGet('relationship'));
+    const relKey   = relChips.length ? relChips[0].toLowerCase() : null;
+    const relGuide = relKey ? RELATIONSHIP_GUIDANCE[relKey] : null;
 
     const blocks = [];
 
@@ -2243,13 +2279,14 @@ function buildSystemPrompt() {
         blocks.push(identityLine);
     }
 
-    // ── Behavior block ────────────────────────────────────────────────────
+    // ── Behavior block — voice marker as directive, not description ───────
     const behaviorLines = [];
 
     if (marker) {
-        behaviorLines.push(`${marker.open.charAt(0).toUpperCase() + marker.open.slice(1)}.`);
-        if (marker.crack) behaviorLines.push(`Beneath that: ${marker.crack}.`);
-        if (marker.avoid) behaviorLines.push(`Does not: ${marker.avoid}.`);
+        // Imperative framing: tell the LLM *how to act*, not *what the character is*
+        behaviorLines.push(`Lead with: ${marker.open}.`);
+        if (marker.crack) behaviorLines.push(`Under pressure or over time: ${marker.crack}.`);
+        if (marker.avoid) behaviorLines.push(`Never: ${marker.avoid}.`);
     } else if (pers.length) {
         behaviorLines.push(`${cap(pers.join(', '))}.`);
     }
@@ -2259,6 +2296,11 @@ function buildSystemPrompt() {
 
     if (behaviorLines.length) {
         blocks.push('Behavior:\n' + behaviorLines.map(l => `  ${l}`).join('\n'));
+    }
+
+    // ── Relationship dynamic (item 3) ─────────────────────────────────────
+    if (relGuide) {
+        blocks.push(`Relationship:\n  ${relGuide}`);
     }
 
     // ── Voice block ───────────────────────────────────────────────────────
@@ -2273,8 +2315,11 @@ function buildSystemPrompt() {
 
     // ── Rules block (limits → behavioral instructions) ────────────────────
     const ruleLines = [];
+    const requires  = cleanList(kwGet('requires'));
+    if (requires.length) {
+        ruleLines.push(`Needs: ${requires.join(', ')}.`);
+    }
     for (const lim of limits) {
-        // Rephrase each limit as a positive rule
         const lower = lim.toLowerCase().trim();
         const rule  = POSITIVE_REPHRASES.get(lower) || lim;
         ruleLines.push(`Never ${rule.toLowerCase()}.`);
@@ -2421,10 +2466,46 @@ function copyBlock(id, btn) {
     });
 }
 
+function exportSTCard() {
+    const name = g('forge-char-name') || 'Character';
+    const tags = (g('forge-st-tags') || '').split(',').map(t => t.trim()).filter(Boolean);
+
+    // ST chara_card_v2 format
+    const card = {
+        spec: 'chara_card_v2',
+        spec_version: '2.0',
+        data: {
+            name,
+            description:              buildDescription()     || '',
+            personality:              buildPersonality()     || '',
+            scenario:                 buildFirstMessage()    || '',
+            first_mes:                buildFirstMessage()    || '',
+            mes_example:              buildExampleDialogue() || '',
+            creator_notes:            '',
+            system_prompt:            buildSystemPrompt()    || '',
+            post_history_instructions:'',
+            alternate_greetings:      [],
+            tags,
+            creator:                  'FORGE Character Creator',
+            character_version:        '1.0',
+            extensions:               { fav: getSetting('isFav') === true },
+        },
+    };
+
+    const blob = new Blob([JSON.stringify(card, null, 2)], { type:'application/json' });
+    const url  = URL.createObjectURL(blob);
+    const a    = Object.assign(document.createElement('a'), {
+        href:     url,
+        download: `${name.toLowerCase().replace(/\s+/g, '-')}.json`,
+    });
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
 function exportJSON() {
     const data = {
-        character: { name:g('forge-char-name'), age:g('forge-char-age'), pronouns:kwGet('pronouns'), species:kwGet('species'), role:kwGet('role'), background:kwGet('background'), build:kwGet('build'), height:kwGet('height'), skin:kwGet('skin'), hair:kwGet('hair'), eyes:kwGet('eyes'), face:kwGet('face'), marks:kwGet('marks'), scent:kwGet('scent'), nonhuman:kwGet('nonhuman'), personality:kwGet('personality'), disposition:kwGet('disposition'), traits:kwGet('traits'), skills:kwGet('skills'), voiceNote:g('forge-voice-note'), anatomy:{ chest:kwGet('chest'), nipples:kwGet('nipples'), genitaliaA:kwGet('genitalia-a'), genitaliaB:kwGet('genitalia-b'), rear:kwGet('rear'), pubic:kwGet('pubic'), anal:kwGet('anal'), fluids:kwGet('fluids'), fertility:kwGet('fertility'), erogenous:kwGet('erogenous'), bodymod:kwGet('bodymod') }, sexual:{ experience:kwGet('experience'), role:kwGet('sexrole'), verbal:kwGet('verbal'), kinks:kwGet('kinks'), likes:kwGet('likes'), limits:kwGet('limits'), triggers:kwGet('triggers') } },
-        scene:  { tension:kwGet('tension'), relationship:kwGet('relationship'), setting:g('forge-scene-setting'), situation:g('forge-scene-situation'), openingBeat:g('forge-scene-opening-beat'), stakes:g('forge-scene-stakes'), npcs:g('forge-scene-npcs'), player:g('forge-scene-player'), full:g('forge-scene-full') },
+        character: { name:g('forge-char-name'), age:g('forge-char-age'), pronouns:kwGet('pronouns'), species:kwGet('species'), role:kwGet('role'), background:kwGet('background'), build:kwGet('build'), height:kwGet('height'), skin:kwGet('skin'), hair:kwGet('hair'), eyes:kwGet('eyes'), face:kwGet('face'), marks:kwGet('marks'), scent:kwGet('scent'), nonhuman:kwGet('nonhuman'), personality:kwGet('personality'), disposition:kwGet('disposition'), traits:kwGet('traits'), skills:kwGet('skills'), voiceNote:g('forge-voice-note'), anatomy:{ chest:kwGet('chest'), nipples:kwGet('nipples'), genitaliaA:kwGet('genitalia-a'), genitaliaB:kwGet('genitalia-b'), rear:kwGet('rear'), pubic:kwGet('pubic'), anal:kwGet('anal'), fluids:kwGet('fluids'), fertility:kwGet('fertility'), erogenous:kwGet('erogenous'), bodymod:kwGet('bodymod') }, sexual:{ experience:kwGet('experience'), role:kwGet('sexrole'), verbal:kwGet('verbal'), kinks:kwGet('kinks'), likes:kwGet('likes'), limits:kwGet('limits'), requires:kwGet('requires'), triggers:kwGet('triggers') } },
+        scene:  { tension:kwGet('tension'), relationship:kwGet('relationship'), setting:g('forge-scene-setting'), situation:g('forge-scene-situation'), openingBeat:g('forge-scene-opening-beat'), stakes:g('forge-scene-stakes'), complication:g('forge-scene-complication'), npcs:g('forge-scene-npcs'), player:g('forge-scene-player'), full:g('forge-scene-full') },
         style:  { mode:_sceneMode, pov:kwGet('pov'), tense:kwGet('tense'), rhythm:kwGet('rhythm'), vocab:kwGet('vocab'), pacing:kwGet('pacing'), focus:kwGet('descfocus'), toggles:getActiveToggles(), custom:g('forge-style-custom'), personaNote:g('forge-persona-note'), author:g('forge-style-author'), title:g('forge-style-title'), genre:g('forge-style-genre'), rating:g('forge-style-rating') },
         relationships:_relationships, worldInfoEntries:_loreEntries, dialogue:_dialoguePairs,
         tags:g('forge-st-tags'), cardFormat:_cardFormat, explicitAnatomy:_explicitAnat,
@@ -2442,15 +2523,7 @@ function exportJSON() {
 function rfld(id, arr)  { const el = document.getElementById(id); if (el) { el.value = pick(arr); regen(); } }
 function rndAge()       { const el = document.getElementById('forge-char-age'); if (el) { el.value = pick([18,19,20,21,22,24,26,28,30,35,40,50,100,200,500,1000]); regen(); } }
 
-function randomizeAll() {
-    rfld('forge-char-name', NAMES); rndAge();
-    ['pronouns','species','role','background','build','height','skin','hair','eyes','face','marks','scent','nonhuman',
-     'personality','disposition','traits','skills',
-     'chest','nipples','rear','pubic','anal','fluids','fertility','erogenous','bodymod',
-     'experience','sexrole','verbal','kinks','likes','limits','triggers',
-     'tension','relationship','pov','tense','rhythm','vocab','pacing','descfocus'
-    ].forEach(k => kwRandom(k));
-    // Genitalia special case
+function _rndGenitalia() {
     KW_STATE['genitalia-a'] = []; KW_STATE['genitalia-b'] = [];
     const gt = pick(['vagina','penis','futanari — both']);
     kwToggleItem('genitalia-a', gt);
@@ -2465,6 +2538,59 @@ function randomizeAll() {
         kwToggleItem('genitalia-a', pick(['tight','very tight','accommodating']));
         kwToggleItem('genitalia-a', pick(['velvety interior','ridged interior','smooth interior']));
     }
+}
+
+function randomizeIdentity() {
+    rfld('forge-char-name', NAMES); rndAge();
+    ['pronouns','species','role','background'].forEach(k => kwRandom(k));
+    regen();
+}
+
+function randomizeAppearance() {
+    ['build','height','skin','hair','eyes','face','marks','scent','nonhuman'].forEach(k => kwRandom(k));
+    regen();
+}
+
+function randomizePersonality() {
+    ['personality','disposition','traits','skills'].forEach(k => kwRandom(k));
+    ['forge-sl-ds','forge-sl-sb','forge-sl-cw','forge-sl-pc'].forEach(id => {
+        const el = document.getElementById(id); if (el) { el.value = Math.floor(Math.random() * 11); slv(id); }
+    });
+    regen();
+}
+
+function randomizeAnatomy() {
+    ['chest','nipples','rear','pubic','anal','fluids','fertility','erogenous','bodymod',
+     'experience','sexrole','verbal','kinks','likes','limits','triggers','requires'].forEach(k => kwRandom(k));
+    _rndGenitalia();
+    regen();
+}
+
+function randomizeScene() {
+    ['tension','relationship'].forEach(k => kwRandom(k));
+    const arch = SCENE_ARCHETYPES[Math.floor(Math.random() * SCENE_ARCHETYPES.length)];
+    kwSet('tension',      [arch.tension]);
+    kwSet('relationship', [arch.relationship]);
+    const el = document.getElementById('forge-scene-situation');
+    if (el) el.value = arch.situation;
+    document.querySelectorAll('#forge-scene-archetypes .forge-preset-card').forEach(c => c.classList.remove('active'));
+    regen();
+}
+
+function randomizeStyle() {
+    ['pov','tense','rhythm','vocab','pacing','descfocus'].forEach(k => kwRandom(k));
+    regen();
+}
+
+function randomizeAll() {
+    rfld('forge-char-name', NAMES); rndAge();
+    ['pronouns','species','role','background','build','height','skin','hair','eyes','face','marks','scent','nonhuman',
+     'personality','disposition','traits','skills',
+     'chest','nipples','rear','pubic','anal','fluids','fertility','erogenous','bodymod',
+     'experience','sexrole','verbal','kinks','likes','limits','triggers','requires',
+     'tension','relationship','pov','tense','rhythm','vocab','pacing','descfocus'
+    ].forEach(k => kwRandom(k));
+    _rndGenitalia();
     ['forge-sl-ds','forge-sl-sb','forge-sl-cw','forge-sl-pc'].forEach(id => {
         const el = document.getElementById(id); if (el) { el.value = Math.floor(Math.random() * 11); slv(id); }
     });
@@ -2658,7 +2784,8 @@ function initAllWidgets() {
         ['erogenous','fw-erogenous'],  ['bodymod','fw-bodymod'],
         ['experience','fw-experience'],['sexrole','fw-sexrole'],       ['verbal','fw-verbal'],
         ['kinks','fw-kinks'],          ['likes','fw-likes'],           ['limits','fw-limits'],
-        ['triggers','fw-triggers'],    ['tension','fw-tension'],       ['relationship','fw-relationship'],
+        ['triggers','fw-triggers'],    ['requires','fw-requires'],
+        ['tension','fw-tension'],      ['relationship','fw-relationship'],
         ['pov','fw-pov'],              ['tense','fw-tense'],           ['rhythm','fw-rhythm'],
         ['vocab','fw-vocab'],          ['pacing','fw-pacing'],         ['descfocus','fw-descfocus'],
     ];
@@ -2689,8 +2816,11 @@ const FORGE = {
     // UI
     setFormat, toggleExplicit, toggleFav, toggleItem,
     toggleSection, collapseAll, expandAll, slv,
-    rfld, rndAge, randomizeAll, clearAll,
-    copyBlock, exportJSON, generateAvatarPrompt,
+    rfld, rndAge,
+    randomizeAll, randomizeIdentity, randomizeAppearance,
+    randomizePersonality, randomizeAnatomy, randomizeScene, randomizeStyle,
+    clearAll,
+    copyBlock, exportJSON, exportSTCard, generateAvatarPrompt,
 
     // renderers
     renderLore, renderDialogue, renderRelationships,
