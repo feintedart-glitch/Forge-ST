@@ -755,6 +755,32 @@
 .forge-copy-btn:hover { color: var(--forge-gold); border-color: var(--forge-gold-dim); }
 .forge-copy-btn.copied { color: var(--forge-gold); border-color: var(--forge-gold); }
 
+/* ── Refresh + Lock buttons ── */
+.forge-refresh-btn,
+.forge-lock-btn {
+  position: absolute;
+  top: 5px;
+  background: var(--forge-surface2);
+  border: 1px solid var(--forge-border2);
+  border-radius: 2px;
+  color: var(--forge-text3);
+  cursor: pointer;
+  font-size: 10px;
+  padding: 2px 5px;
+  transition: all 0.15s;
+  line-height: 1.4;
+}
+.forge-refresh-btn { right: 46px; }
+.forge-lock-btn    { right: 72px; }
+.forge-refresh-btn:hover { color: var(--forge-gold); border-color: var(--forge-gold-dim); transform: rotate(-30deg); }
+.forge-lock-btn:hover    { color: var(--forge-gold); border-color: var(--forge-gold-dim); }
+
+/* Locked block: dim border + subtle tint so it's clearly preserved */
+.forge-output-block.forge-locked {
+  border-color: var(--forge-gold-dim);
+  background: color-mix(in srgb, var(--forge-bg3) 92%, var(--forge-gold) 8%);
+}
+
 /* ── RELATIONSHIPS ── */
 .forge-rel-row {
   display: flex;

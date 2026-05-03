@@ -841,6 +841,7 @@ let _relationships = [];
 let _loreEntries   = [];
 let _dialoguePairs = [];
 const KW_STATE     = {};
+const _lockedBlocks = new Set();
 
 // ── Generic helpers ───────────────────────────────────────────────────────
 function pick(arr)      { return arr[Math.floor(Math.random() * arr.length)]; }
@@ -1293,6 +1294,61 @@ function randomizeDialogue() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// VOICE MODIFIERS  — per scene-mode prose shaping
+// ═══════════════════════════════════════════════════════════════════════════
+const VOICE_MODIFIERS = {
+    erotic: {
+        // Physical fields rendered first, in sensory order
+        appearanceOrder: ['scent','build','height','skin','hair','eyes','face','marks','nonhuman'],
+        // Anatomy folds INTO the physical description — not a separate block
+        anatomyInline: true,
+        // Anatomy field order and their inline prose labels
+        anatomyOrder: [
+            ['chest',     null],           // no label — flows from skin description
+            ['nipples',   null],
+            ['pubic',     null],
+            ['rear',      null],
+            ['genitalia-a', null],
+            ['genitalia-b', null],
+            ['anal',      null],
+            ['fluids',    null],
+            ['fertility', null],
+            ['erogenous', 'sensitive at'],
+            ['bodymod',   null],
+        ],
+        // Personality framed last, through behavior
+        personalityLabel: 'Disposition',
+        sexualLabel: null, // merged into disposition block
+        anatomySectionLabel: null,
+    },
+    literary: {
+        appearanceOrder: ['face','marks','nonhuman','eyes','hair','skin','build','height','scent'],
+        anatomyInline: false,
+        personalityLabel: 'Character',
+        anatomySectionLabel: 'Anatomy',
+    },
+    pulp: {
+        appearanceOrder: ['build','height','face','hair','eyes','skin','marks','scent','nonhuman'],
+        compact: true,
+        anatomyInline: false,
+        personalityLabel: 'Personality',
+        anatomySectionLabel: 'Body',
+    },
+    horror: {
+        appearanceOrder: ['nonhuman','marks','eyes','face','skin','hair','build','height','scent'],
+        anatomyInline: false,
+        personalityLabel: 'Nature',
+        anatomySectionLabel: 'Anatomy',
+    },
+    romance: {
+        appearanceOrder: ['skin','hair','eyes','face','build','height','scent','marks','nonhuman'],
+        anatomyInline: false,
+        personalityLabel: 'Personality',
+        anatomySectionLabel: 'Body',
+    },
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
 // OUTPUT BUILDERS
 // ═══════════════════════════════════════════════════════════════════════════
 function getSliderAxes() {
@@ -1455,71 +1511,154 @@ function buildPList() {
 
 // ── Prose ─────────────────────────────────────────────────────────────────
 function buildProse() {
-    const name     = g('forge-char-name');
-    const species  = kwGet('species');
-    const role     = kwGet('role');
+    const name    = g('forge-char-name');
+    const species = kwGet('species');
+    const role    = kwGet('role');
     if (!name && !species.length && !role.length) return null;
+
+    const mod = VOICE_MODIFIERS[_sceneMode] || VOICE_MODIFIERS.romance;
 
     const pronouns = kwGet('pronouns');
     const pro      = pronouns.length ? cleanList(pronouns)[0] : null;
     const pronRef  = pro
-        ? (pro.startsWith('she') ? 'She has' : pro.startsWith('he') ? 'He has' : 'They have')
-        : (name ? `${name} has` : 'Has');
+        ? (pro.startsWith('she') ? 'She' : pro.startsWith('he') ? 'He' : 'They')
+        : (name || 'They');
+    const pronHas  = pronRef + (pronRef === 'They' ? ' have' : ' has');
 
     const lines = [];
 
-    // Identity
-    const id = [name,...cleanList(species),...cleanList(role)].filter(Boolean);
+    // ── Identity line ──────────────────────────────────────────────────────
+    const id = [name, ...cleanList(species), ...cleanList(role)].filter(Boolean);
     const ag = g('forge-char-age');
     if (ag) id.push(ag + ' years old');
     lines.push(id.join(', ') + '.');
 
-    // Appearance
-    const build  = kwGet('build'); const height = kwGet('height');
-    const skin   = kwGet('skin');  const hair   = kwGet('hair');
-    const eyes   = kwGet('eyes');  const face   = kwGet('face');
-    const phys   = [...cleanList(build),...cleanList(height)].join(', ');
-    const colour = [
-        skin.length  ? join(cleanList(skin))  + ' skin'  : '',
-        hair.length  ? join(cleanList(hair))  + ' hair'  : '',
-        eyes.length  ? join(cleanList(eyes))  + ' eyes'  : '',
-    ].filter(Boolean);
-    if (phys || colour.length) {
-        lines.push(`${pronRef} a ${phys}${phys && colour.length ? ', with ' : ''}${colour.join(', ')}.`);
+    // ── Appearance — ordered by mode ──────────────────────────────────────
+    const appFields = {
+        build:    kwGet('build'),
+        height:   kwGet('height'),
+        skin:     kwGet('skin'),
+        hair:     kwGet('hair'),
+        eyes:     kwGet('eyes'),
+        face:     kwGet('face'),
+        marks:    kwGet('marks'),
+        scent:    kwGet('scent'),
+        nonhuman: kwGet('nonhuman'),
+    };
+    const appOrder = mod.appearanceOrder || ['build','height','skin','hair','eyes','face','marks','scent','nonhuman'];
+
+    if (mod.compact) {
+        // Pulp: one dense line
+        const build  = [...cleanList(appFields.build), ...cleanList(appFields.height)].join(', ');
+        const colour = [
+            appFields.skin.length  ? join(cleanList(appFields.skin))  + ' skin'  : '',
+            appFields.hair.length  ? join(cleanList(appFields.hair))  + ' hair'  : '',
+            appFields.eyes.length  ? join(cleanList(appFields.eyes))  + ' eyes'  : '',
+        ].filter(Boolean);
+        const face = appFields.face.length ? join(cleanList(appFields.face)) : '';
+        const parts = [build, colour.join(', '), face].filter(Boolean);
+        if (parts.length) lines.push(`${pronHas} ${parts.join(', ')}.`);
+        if (appFields.marks.length)    lines.push(`Marks: ${join(cleanList(appFields.marks))}.`);
+        if (appFields.nonhuman.length) lines.push(`Non-human: ${join(cleanList(appFields.nonhuman))}.`);
+        if (appFields.scent.length)    lines.push(`Scent: ${join(cleanList(appFields.scent))}.`);
+    } else {
+        // All other modes: render fields in mode-ordered sentences
+        // Build physical sentence from build + height
+        const buildParts = [...cleanList(appFields.build), ...cleanList(appFields.height)];
+        const skinParts  = appFields.skin.length  ? join(cleanList(appFields.skin))  + ' skin'  : '';
+        const hairParts  = appFields.hair.length  ? join(cleanList(appFields.hair))  + ' hair'  : '';
+        const eyeParts   = appFields.eyes.length  ? join(cleanList(appFields.eyes))  + ' eyes'  : '';
+
+        // For modes that lead with face/marks (literary, horror): open with that
+        const leadsWithFace = appOrder[0] === 'face' || appOrder[0] === 'nonhuman' || appOrder[0] === 'marks';
+
+        if (leadsWithFace) {
+            const lead = [];
+            for (const f of appOrder.slice(0, 3)) {
+                const v = appFields[f];
+                if (v && v.length) lead.push(...cleanList(v));
+            }
+            if (lead.length) lines.push(`${join(lead)}.`);
+            const colour = [skinParts, hairParts, eyeParts].filter(Boolean);
+            if (buildParts.length || colour.length)
+                lines.push(`${pronHas} a ${buildParts.join(', ')}${buildParts.length && colour.length ? ', with ' : ''}${colour.join(', ')}.`);
+        } else {
+            // Standard: build/height + colouring sentence
+            const colour = [skinParts, hairParts, eyeParts].filter(Boolean);
+            if (buildParts.length || colour.length)
+                lines.push(`${pronHas} a ${buildParts.join(', ')}${buildParts.length && colour.length ? ', with ' : ''}${colour.join(', ')}.`);
+            if (appFields.face.length) lines.push(`Face: ${join(cleanList(appFields.face))}.`);
+        }
+
+        // Remaining appearance fields per mode order
+        const rendered = new Set(['build','height','skin','hair','eyes','face']);
+        for (const f of appOrder) {
+            if (rendered.has(f) || !appFields[f] || !appFields[f].length) continue;
+            const vals = join(cleanList(appFields[f]));
+            if (!vals) continue;
+            const label = f === 'nonhuman' ? 'Non-human features' : cap(f);
+            lines.push(`${label}: ${vals}.`);
+            rendered.add(f);
+        }
     }
-    if (face.length) lines.push(`Face: ${join(cleanList(face))}.`);
 
-    const marks   = kwGet('marks');   if (marks.length)   lines.push(`Marks: ${join(cleanList(marks))}.`);
-    const scent   = kwGet('scent');   if (scent.length)   lines.push(`Scent: ${join(cleanList(scent))}.`);
-    const nh      = kwGet('nonhuman');if (nh.length)      lines.push(`Non-human features: ${join(cleanList(nh))}.`);
+    // ── EROTIC mode: anatomy folds into physical description ──────────────
+    if (_sceneMode === 'erotic' && _explicitAnat && mod.anatomyInline) {
+        const anatOrder = mod.anatomyOrder || [];
+        const anatParts = [];
+        for (const [field, label] of anatOrder) {
+            const vals = cleanList(kwGet(field));
+            if (!vals.length) continue;
+            anatParts.push(label ? `${label} ${lowerJoin(vals)}` : lowerJoin(vals));
+        }
+        if (anatParts.length) lines.push(anatParts.join(', ') + '.');
 
-    // Personality
-    const pers = [...kwGet('personality'),...kwGet('disposition'),...kwGet('traits')];
+        // Sexual disposition — merged, no section header
+        const sexrole   = kwGet('sexrole');   const experience = kwGet('experience');
+        const verbal    = kwGet('verbal');    const triggers   = kwGet('triggers');
+        const kinks     = kwGet('kinks');     const likes      = kwGet('likes');
+        const lim       = kwGet('limits').map(positivePhrase);
+        const sexParts  = [...cleanList(sexrole),...cleanList(experience)].filter(Boolean);
+        if (sexParts.length) lines.push(`${pronRef} is ${sexParts.join(', ')}.`);
+        if (verbal.length)   lines.push(`Verbal: ${join(cleanList(verbal))}.`);
+        if (triggers.length) lines.push(`Responds to: ${join(cleanList(triggers))}.`);
+        if (kinks.length)    lines.push(`Kinks: ${join(cleanList(kinks))}.`);
+        if (likes.length)    lines.push(`Likes: ${join(cleanList(likes))}.`);
+        if (lim.length)      lines.push(`Will not: ${lim.map(v => v.toLowerCase()).join(', ')}.`);
+    }
+
+    // ── Voice ──────────────────────────────────────────────────────────────
+    const voice = g('forge-voice-note');
+    if (voice) lines.push(`Voice: ${voice}.`);
+
+    // ── Personality ────────────────────────────────────────────────────────
+    const pers = [...kwGet('personality'), ...kwGet('disposition'), ...kwGet('traits')];
     const axes = getSliderAxes();
-    if (pers.length || axes.length) lines.push(`Personality: ${join([...cleanList(pers),...axes].filter(Boolean))}.`);
-    const voice = g('forge-voice-note'); if (voice) lines.push(`Voice: ${voice}.`);
+    const persLabel = mod.personalityLabel || 'Personality';
+    if (pers.length || axes.length)
+        lines.push(`${persLabel}: ${join([...cleanList(pers), ...axes].filter(Boolean))}.`);
 
-    const sk = kwGet('skills'); if (sk.length) lines.push(`Skills: ${join(cleanList(sk))}.`);
+    const sk = kwGet('skills');     if (sk.length) lines.push(`Skills: ${join(cleanList(sk))}.`);
     const bg = kwGet('background'); if (bg.length) lines.push(`Background: ${join(cleanList(bg))}.`);
 
     const rels = _relationships.filter(r => r.role || r.name);
-    if (rels.length) lines.push('Relationships: ' + rels.map(r => `${positivePhrase(r.role || 'related')} of ${positivePhrase(r.name || 'unknown')}`).join('; ') + '.');
+    if (rels.length)
+        lines.push('Relationships: ' + rels.map(r =>
+            `${positivePhrase(r.role || 'related')} of ${positivePhrase(r.name || 'unknown')}`
+        ).join('; ') + '.');
 
-    if (_explicitAnat) {
-        const chest    = kwGet('chest');
-        const nipples  = kwGet('nipples');
-        const rear     = kwGet('rear');
-        const pubic    = kwGet('pubic');
-        const erogenous= kwGet('erogenous');
-        const bodymod  = kwGet('bodymod');
-        const genA     = kwGet('genitalia-a');
-        const genB     = kwGet('genitalia-b');
-        const anal     = kwGet('anal');
-        const fluids   = kwGet('fluids');
+    // ── Non-erotic anatomy (labeled section) ──────────────────────────────
+    if (_explicitAnat && _sceneMode !== 'erotic') {
+        const chest    = kwGet('chest');     const nipples  = kwGet('nipples');
+        const rear     = kwGet('rear');      const pubic    = kwGet('pubic');
+        const erogenous= kwGet('erogenous'); const bodymod  = kwGet('bodymod');
+        const genA     = kwGet('genitalia-a'); const genB   = kwGet('genitalia-b');
+        const anal     = kwGet('anal');      const fluids   = kwGet('fluids');
         const fertility= kwGet('fertility');
         const hasAnat  = [chest,nipples,rear,pubic,erogenous,bodymod,genA,genB,anal,fluids,fertility].some(a => a.length);
         if (hasAnat) {
-            lines.push(''); lines.push('Anatomy:');
+            const anatLabel = mod.anatomySectionLabel || 'Anatomy';
+            lines.push(''); lines.push(`${anatLabel}:`);
             if (chest.length)    lines.push(`  Chest: ${join(cleanList(chest))}.`);
             if (nipples.length)  lines.push(`  Nipples: ${join(cleanList(nipples))}.`);
             if (rear.length)     lines.push(`  Rear: ${join(cleanList(rear))}.`);
@@ -1623,20 +1762,72 @@ function buildSystemPrompt() {
 }
 
 // ── setOutput / regen ─────────────────────────────────────────────────────
+const _OUTPUT_MAP = [
+    ['forge-out-description', 'forge-tok-description', buildDescription],
+    ['forge-out-personality', 'forge-tok-personality', buildPersonality],
+    ['forge-out-firstmes',    'forge-tok-firstmes',    buildFirstMessage],
+    ['forge-out-dialogue',    'forge-tok-dialogue',    buildExampleDialogue],
+    ['forge-out-sysprompt',   'forge-tok-sysprompt',   buildSystemPrompt],
+];
+
+function toggleLock(id) {
+    if (_lockedBlocks.has(id)) _lockedBlocks.delete(id);
+    else _lockedBlocks.add(id);
+    // Update lock button appearance without full regen
+    const el = document.getElementById(id);
+    if (!el) return;
+    const lockBtn = el.querySelector('.forge-lock-btn');
+    if (lockBtn) {
+        const locked = _lockedBlocks.has(id);
+        lockBtn.textContent = locked ? '🔒' : '🔓';
+        lockBtn.title = locked ? 'Unlock (auto-update on)' : 'Lock (preserve this output)';
+        el.classList.toggle('forge-locked', locked);
+    }
+}
+
+function regenBlock(id) {
+    const entry = _OUTPUT_MAP.find(e => e[0] === id);
+    if (!entry) return;
+    setOutput(entry[0], entry[1], entry[2]());
+}
+
 function setOutput(id, tokId, content) {
     const el   = document.getElementById(id);
     const tkEl = document.getElementById(tokId);
     if (!el) return;
-    const btn = el.querySelector('.forge-copy-btn');
+
+    // Preserve existing control buttons across rebuild
+    const existingCopy = el.querySelector('.forge-copy-btn');
+    const existingLock = el.querySelector('.forge-lock-btn');
+    const existingRefr = el.querySelector('.forge-refresh-btn');
     el.innerHTML = '';
-    if (btn) { el.appendChild(btn); }
-    else {
-        const b = document.createElement('button');
-        b.className = 'forge-copy-btn';
-        b.textContent = 'Copy';
-        b.onclick = function () { FORGE.copyBlock(id, this); };
-        el.appendChild(b);
-    }
+
+    // Copy button
+    const copyBtn = existingCopy || document.createElement('button');
+    copyBtn.className = 'forge-copy-btn';
+    copyBtn.textContent = 'Copy';
+    copyBtn.onclick = function () { FORGE.copyBlock(id, this); };
+    el.appendChild(copyBtn);
+
+    // Refresh button (reruns just this block)
+    const refrBtn = existingRefr || document.createElement('button');
+    refrBtn.className = 'forge-refresh-btn';
+    refrBtn.textContent = '↺';
+    refrBtn.title = 'Regenerate this block';
+    refrBtn.onclick = function () { regenBlock(id); };
+    el.appendChild(refrBtn);
+
+    // Lock button
+    const locked  = _lockedBlocks.has(id);
+    const lockBtn = existingLock || document.createElement('button');
+    lockBtn.className   = 'forge-lock-btn';
+    lockBtn.textContent = locked ? '🔒' : '🔓';
+    lockBtn.title       = locked ? 'Unlock (auto-update on)' : 'Lock (preserve this output)';
+    lockBtn.onclick     = function () { toggleLock(id); };
+    el.appendChild(lockBtn);
+
+    el.classList.toggle('forge-locked', locked);
+
     if (content) {
         el.appendChild(document.createTextNode(content));
         if (tkEl) tkEl.textContent = countTokens(content) + ' tk';
@@ -1650,11 +1841,10 @@ function setOutput(id, tokId, content) {
 }
 
 function regen() {
-    setOutput('forge-out-description','forge-tok-description', buildDescription());
-    setOutput('forge-out-personality','forge-tok-personality', buildPersonality());
-    setOutput('forge-out-firstmes',   'forge-tok-firstmes',   buildFirstMessage());
-    setOutput('forge-out-dialogue',   'forge-tok-dialogue',   buildExampleDialogue());
-    setOutput('forge-out-sysprompt',  'forge-tok-sysprompt',  buildSystemPrompt());
+    for (const [id, tokId, builder] of _OUTPUT_MAP) {
+        if (_lockedBlocks.has(id)) continue;
+        setOutput(id, tokId, builder());
+    }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1941,7 +2131,7 @@ const FORGE = {
     kwToggleDD, kwRandom, kwSet, kwGet,
 
     // output
-    regen,
+    regen, regenBlock, toggleLock,
 
     // UI
     setFormat, toggleExplicit, toggleFav, toggleItem,
