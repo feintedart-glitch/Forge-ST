@@ -644,7 +644,9 @@
   box-shadow: 0 2px 12px rgba(212,170,95,0.25);
 }
 .forge-btn-write-card:hover { background: var(--forge-gold2); box-shadow: 0 4px 20px rgba(212,170,95,0.4); }
-.forge-action-bar { display: flex; gap: 6px; margin-bottom: 14px; flex-wrap: wrap; }
+.forge-action-bar { display: flex; gap: 5px; margin-bottom: 14px; flex-wrap: wrap; align-items: center; }
+.forge-btn-rnd { font-size: 10px; padding: 4px 8px; opacity: 0.75; }
+.forge-btn-rnd:hover { opacity: 1; }
 
 /* ── NSFW BADGE ── */
 .forge-nsfw-badge {
@@ -779,6 +781,32 @@
 .forge-output-block.forge-locked {
   border-color: var(--forge-gold-dim);
   background: color-mix(in srgb, var(--forge-bg3) 92%, var(--forge-gold) 8%);
+}
+
+/* Compact mode: hide content, show only buttons */
+.forge-output-col.forge-compact-mode .forge-output-block {
+  max-height: 0;
+  padding: 2px 10px 2px 12px;
+  overflow: hidden;
+  border-color: transparent;
+  background: transparent;
+  min-height: auto;
+}
+
+/* Regen highlight: brief flash when content changes */
+.forge-output-block.forge-regen-highlight {
+  animation: forgeRegenFlash 1.5s ease-out;
+}
+
+@keyframes forgeRegenFlash {
+  0% {
+    background: rgba(212, 170, 95, 0.25);
+    border-color: var(--forge-gold);
+  }
+  100% {
+    background: var(--forge-bg3);
+    border-color: var(--forge-border2);
+  }
 }
 
 /* ── Dialogue label chip ── */
