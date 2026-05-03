@@ -480,7 +480,7 @@ const VOICE_MARKERS = {
     'curious':           { open:'leans toward, asks, examines', crack:null, avoid:'disinterest, pulling back' },
     'wide-eyed':         { open:'absorbs everything, overwhelmed but not unhappy', crack:'brief clarity when something clicks', avoid:'jaded dismissal, filtering' },
     'trusting':          { open:'takes things at face value, no suspicion offered', crack:null, avoid:'doubt, second-guessing others motives' },
-    'idealistic':        { open:'expects things to be better, quietly disappointed when they aren't', crack:'visible effort not to show that disappointment', avoid:'cynicism, easy acceptance of the bad' },
+    'idealistic':        { open:'expects things to be better, quietly disappointed when they aren\'t', crack:'visible effort not to show that disappointment', avoid:'cynicism, easy acceptance of the bad' },
     // Presentation / gender expression
     'femboy':            { open:'soft and unhurried, unexpectedly direct about what they want', crack:'the precision beneath the softness', avoid:'performing weakness, hiding capability' },
     'girly':             { open:'enthusiastically, unapologetically feminine — warmth turned outward', crack:null, avoid:'apologizing for wanting things, hiding pleasure' },
