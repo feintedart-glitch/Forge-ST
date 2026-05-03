@@ -381,7 +381,16 @@
     <!-- ════════════════════════════════════
          OUTPUT COLUMN
          ════════════════════════════════════ -->
-    <div class="forge-output-col">
+    <div class="forge-output-col" id="forge-output-col">
+
+      <!-- Avatar Section (top, next to card format) -->
+      <div style="margin-bottom:14px;">
+        <div class="forge-output-title" style="margin-bottom:8px;">Character</div>
+        <div id="forge-avatar-display" style="text-align:center;margin-bottom:8px;">
+          <img id="forge-char-avatar" src="" alt="Character Avatar" class="forge-avatar-thumb" style="display:none;">
+          <span id="forge-no-avatar" style="font-family:var(--forge-font-mono);font-size:10px;color:var(--forge-text3);">—</span>
+        </div>
+      </div>
 
       <!-- Card Format Toggle -->
       <div style="margin-bottom:14px;">
@@ -391,6 +400,15 @@
           <button class="forge-format-btn" onclick="FORGE.setFormat('plist', this)" data-format="plist">PList</button>
           <button class="forge-format-btn active" onclick="FORGE.setFormat('prose', this)" data-format="prose">Prose</button>
         </div>
+      </div>
+
+      <!-- Compact Mode Toggle -->
+      <div style="margin-bottom:14px;">
+        <div class="forge-output-subtitle" style="margin-bottom:6px;">Display</div>
+        <label class="forge-toggle-item" id="forge-compact-toggle" onclick="FORGE.toggleCompactMode(this)" style="display:flex;gap:6px;">
+          <div class="forge-toggle-switch"></div>
+          <span class="forge-toggle-label">Compact</span>
+        </label>
       </div>
 
       <!-- World Info Target -->
@@ -481,19 +499,6 @@
           <button class="forge-btn forge-btn-ghost" style="flex:1;" onclick="FORGE.exportJSON()" title="Export full FORGE data as JSON">↓ FORGE JSON</button>
         </div>
         <div class="forge-write-status" id="forge-write-status"></div>
-      </div>
-
-      <!-- Avatar Section -->
-      <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--forge-border);">
-        <div class="forge-output-title" style="margin-bottom:8px;">Avatar</div>
-        <div id="forge-avatar-display" style="text-align:center;margin-bottom:8px;">
-          <img id="forge-char-avatar" src="" alt="Character Avatar" class="forge-avatar-thumb" style="display:none;">
-          <span id="forge-no-avatar" style="font-family:var(--forge-font-mono);font-size:10px;color:var(--forge-text3);">No character loaded</span>
-        </div>
-        <button class="forge-btn forge-btn-ghost" style="width:100%;font-size:10px;" onclick="FORGE.generateAvatarPrompt()">
-          Generate Avatar Prompt
-        </button>
-        <div class="forge-output-block" id="forge-out-avatar-prompt" style="margin-top:6px;display:none;font-size:11px;max-height:120px;"></div>
       </div>
 
     </div><!-- /output-col -->

@@ -2459,6 +2459,11 @@ function setOutput(id, tokId, content) {
         el.appendChild(s);
         if (tkEl) tkEl.textContent = '0 tk';
     }
+
+    // Regen highlight: brief flash when content changes
+    el.classList.remove('forge-regen-highlight');
+    void el.offsetWidth; // Force reflow to restart animation
+    if (content) el.classList.add('forge-regen-highlight');
 }
 
 function regen() {
@@ -2655,6 +2660,12 @@ function toggleFav(el) {
     setSetting('isFav', _isFav);
 }
 
+function toggleCompactMode(el) {
+    el.classList.toggle('active');
+    const col = document.getElementById('forge-output-col');
+    if (col) col.classList.toggle('forge-compact-mode', el.classList.contains('active'));
+}
+
 function generateAvatarPrompt() {
     const name = g('forge-char-name') || 'character';
     const parts = [`portrait of ${name}`,
@@ -2843,7 +2854,7 @@ const FORGE = {
     regen, regenBlock, toggleLock, getVoiceMarker,
 
     // UI
-    setFormat, toggleExplicit, toggleFav, toggleItem,
+    setFormat, toggleExplicit, toggleFav, toggleCompactMode, toggleItem,
     toggleSection, collapseAll, expandAll, slv,
     rfld, rndAge,
     randomizeAll, randomizeIdentity, randomizeAppearance,
