@@ -2211,13 +2211,13 @@ function buildFirstMessage() {
         const genericHooks = {
             literary:  [
                 'Neither of you moves first.',
-                'The silence does the work you won't.',
-                'Whatever you were going to say, you don't.',
+                'The silence does the work you won\'t.',
+                'Whatever you were going to say, you don\'t.',
             ],
             erotic:    [
                 'The distance between you is a decision.',
                 'You are very aware of how close they are.',
-                'There is a moment — and then it passes — and then it doesn't.',
+                'There is a moment — and then it passes — and then it doesn\'t.',
             ],
             pulp:      [
                 'It starts now.',
